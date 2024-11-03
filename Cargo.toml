@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "quoridor-core"
+]
+resolver = "2"
