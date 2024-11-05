@@ -1,10 +1,9 @@
 use std::time;
 
-use crate::boardstate::{Player, Boardstate, Action};
+use crate::boardstate::{Action, Boardstate, Player};
 
 pub struct Gamestate {
     id: String,
-    active_player: Player,
     current_board_state: Boardstate,
     white_time_used: time::Duration,
     black_time_used: time::Duration,
