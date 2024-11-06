@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+mod locations;
+
 use fixedbitset::FixedBitSet;
+use locations::{Location, WallLocation, WallOrientation};
 
 #[derive(Clone, Hash)]
 /// The boardstate is responsible for keeping track of all the pawns and walls placed on the board.
@@ -10,6 +13,8 @@ use fixedbitset::FixedBitSet;
 /// can check if move's keep the board in a legal state. This will require some implementation off
 /// a path finding algorithm, since so much off the game revolves around not blocking the path off
 /// for the pawns.
+///
+/// Still need to figure out the rules around jumping over pawns and how to check that efficiently
 pub struct Boardstate {
     active_player: Player,
     white_position: Location,
@@ -81,16 +86,11 @@ impl Boardstate {
     /// A check is executed if the game is won. When the game is won an enum with the Won result is
     /// returned, otherwise the active player is swapped and an InProgress enum is returned
     pub fn play_action(&self, action: Action) -> Result<(), String> {
+        match action {
+            Action::Pawn(location) => (),
+            Action::Wall(wall_location) => (),
+        }
         Ok(())
-    }
-
-    /// I might not need this method depending on what I need for MCTS, if I can make it work with
-    /// just returning a random legal move on a new boardstate that will work. But I might need
-    /// some heuristic for move selection based on all the possible legal moves. So will need to
-    /// see at a later point if I can replace this with a return random move, I just prefer to keep
-    /// the heuristics out of boardstate (Maybe I can Inject the logic for selecting a next move?).
-    pub fn play_action_on_clone(&self, action: Action) -> Result<Boardstate, String> {
-        Ok(Boardstate::new())
     }
 
     /// When playing against the computer a player should be able to take back moves, also usefull
@@ -98,6 +98,22 @@ impl Boardstate {
     /// of the gamestate.
     pub fn undo_action(&self, action: Action) -> Result<(), String> {
         Ok(())
+    }
+
+    fn move_pawn_to_location(&self, location: Location) -> Result<(), String> {
+        // Get possible pawn moves from current position and check if the new location is one of
+        // the legal options
+
+        // If legal, set the pawn of the active player to the new location else return error
+
+        Ok(())
+    }
+
+    fn get_possible_pawn_moves(&self) {
+        let current_location = match self.active_player {
+            Player::White => &self.white_position,
+            Player::Black => &self.black_position,
+        };
     }
 }
 
@@ -108,71 +124,9 @@ pub enum Player {
     Black,
 }
 
-#[derive(Clone, Hash)]
-pub struct Location {
-    square: u8,
-}
-
-impl Location {
-    /// Create a new Location, the number is the square on the board where counting starts in the
-    /// bottom left corner and goes right. So coordinate A1 is square 1, B1 is square 2 and A2 is
-    /// square 10 etc.
-    ///
-    /// The square number must be between 1 and 81, or else an error will be returned.
-    pub fn build(square: u8) -> Result<Self, String> {
-        if (1..=81).contains(&square) {
-            Ok(Location { square })
-        } else {
-            Err(format!(
-                "The square should be in range 1..=81, but was: {square}"
-            ))
-        }
-    }
-
-    pub fn from_notation(coordinate_notation: &str) -> Result<Self, String> {
-        // Convert quoridor notation string to coordinate; for example C2 is 12
-
-        Ok(Location { square: 12 })
-    }
-}
-
-#[derive(Clone, Hash)]
-pub enum WallOrientation {
-    Horizontal,
-    Vertical,
-}
-
-pub struct WallLocation {
-    square: u8,
-    orientation: WallOrientation,
-}
-
-impl WallLocation {
-    /// Create a new WallCoordinate. There are 64 unique positions that a wall can be placed in,
-    /// but the node value can be between 1 and 71. This is because the coordinate of the squares
-    /// is
-    pub fn build(square: u8, orientation: WallOrientation) -> Result<Self, String> {
-        if (1..=71).contains(&square) && &square % 9 != 0 {
-            Ok(WallLocation {
-                square,
-                orientation,
-            })
-        } else {
-            Err(format!("The square should be in the range 1..=71 and should not be divisible by 9, but was {square}"))
-        }
-    }
-}
-
 pub enum Action {
     Pawn(Location),
     Wall(WallLocation),
-}
-
-enum Direction {
-    North,
-    East,
-    South,
-    West,
 }
 
 #[derive(Default)]
@@ -204,7 +158,7 @@ impl PossibleActions {
 //     use super::*;
 //
 //     #[test]
-//     fn it_works() {
+//     fn test_new_location() {
 //         // keep it for later
 //     }
 // }
