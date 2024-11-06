@@ -34,7 +34,7 @@ pub enum GameType {
     PersonVsPerson,
     PersonVsPersonSameDevice,
     PersonVsComputer,
-    ComputerVsComputer
+    ComputerVsComputer,
 }
 
 pub enum TimeControl {
