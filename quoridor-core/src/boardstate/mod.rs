@@ -88,7 +88,7 @@ impl Boardstate {
         for new_location in possible_pawn_moves {
             possible_moves.add_pawn_action(new_location);
         }
-        
+
         possible_moves
     }
 
@@ -97,12 +97,11 @@ impl Boardstate {
     /// boardstate is updated.
     /// A check is executed if the game is won. When the game is won an enum with the Won result is
     /// returned, otherwise the active player is swapped and an InProgress enum is returned
-    pub fn play_action(&self, action: Action) -> Result<(), String> {
+    pub fn play_action(&mut self, action: Action) -> Result<(), String> {
         match action {
-            Action::Pawn(location) => (),
-            Action::Wall(wall_location) => (),
+            Action::Pawn(location) => self.move_pawn_to_location(location),
+            Action::Wall(wall_location) => Ok(()),
         }
-        Ok(())
     }
 
     /// When playing against the computer a player should be able to take back moves, also usefull
@@ -124,13 +123,26 @@ impl Boardstate {
         Ok(())
     }
 
-    fn move_pawn_to_location(&self, location: PawnLocation) -> Result<(), String> {
-        // Get possible pawn moves from current position and check if the new location is one of
-        // the legal options
+    fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<(), String> {
+        let possible_pawn_moves = self.get_possible_pawn_moves();
 
-        // If legal, set the pawn of the active player to the new location else return error
+        if possible_pawn_moves.contains(&location) {
+            match self.active_player {
+                Player::White => {
+                    self.white_position = location;
+                    return Ok(());
+                }
+                Player::Black => {
+                    self.black_position = location;
+                    return Ok(());
+                }
+            }
+        }
 
-        Ok(())
+        Err(format!(
+            "The move to square {} is not legal.",
+            location.get_square()
+        ))
     }
 
     fn get_possible_pawn_moves(&self) -> Vec<PawnLocation> {
@@ -140,12 +152,12 @@ impl Boardstate {
         };
 
         let mut possible_pawn_moves: Vec<PawnLocation> = Vec::with_capacity(4);
-
         for direction in locations::Direction::iter() {
             if let Ok(new_location) = self.check_direction(current_location, &direction) {
                 possible_pawn_moves.push(new_location)
             }
         }
+
         possible_pawn_moves
     }
 
@@ -296,6 +308,22 @@ mod tests {
             locations::PawnLocation::build(4).unwrap(),
         ];
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn move_pawn_up_from_starting_position() {
+        let mut boardstate = Boardstate::new();
+        boardstate.move_pawn_to_location(PawnLocation::build(14).unwrap()).unwrap();
+        
+        assert_eq!(boardstate
+            .get_position_white_pawn().get_square(), 14);
+    }
+
+    #[test]
+    #[should_panic]
+    fn move_pawn_to_center_from_starting_position() {
+        let mut boardstate = Boardstate::new();
+        boardstate.move_pawn_to_location(PawnLocation::build(41).unwrap()).unwrap();
     }
 
     #[test]
