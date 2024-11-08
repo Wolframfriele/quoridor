@@ -1,9 +1,12 @@
+use strum::EnumIter;
+
+#[derive(Debug)]
 pub struct Coordinate {
     pub x: u8,
     pub y: u8,
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug, PartialEq)]
 pub struct PawnLocation {
     square: u8,
 }
@@ -44,6 +47,9 @@ impl PawnLocation {
         }
     }
 
+    /// I don't think I love where this logic is now, maybe it could be nice to add some off the
+    /// max values etc to direction and than do all the checking in the boardstate, than I only
+    /// have to have this logic once
     fn new_location_from_direction(&self, direction: Direction) -> Result<PawnLocation, String> {
         println!("{}", 21 % 9);
         match direction {
@@ -67,6 +73,7 @@ impl PawnLocation {
     }
 }
 
+#[derive(EnumIter, Debug, PartialEq)]
 pub enum Direction {
     North,
     East,
@@ -74,12 +81,13 @@ pub enum Direction {
     West,
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug)]
 pub enum WallOrientation {
     Horizontal,
     Vertical,
 }
 
+#[derive(Debug)]
 pub struct WallLocation {
     square: u8,
     orientation: WallOrientation,

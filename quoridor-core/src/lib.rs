@@ -1,2 +1,2 @@
-mod boardstate;
-mod gamestate;
+pub mod boardstate;
+pub mod gamestate;
