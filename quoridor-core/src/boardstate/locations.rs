@@ -1,4 +1,8 @@
+use std::usize;
+
 use strum::EnumIter;
+
+const ALPHABET: [char; 9] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
 #[derive(Debug)]
 pub struct Coordinate {
@@ -47,6 +51,13 @@ impl PawnLocation {
         }
     }
 
+    pub fn get_notation(&self) -> String {
+        let mut notation = String::new();
+        notation.push(number_to_alphabet(self.get_coordinate().x));
+        notation.push(char::from_digit(self.get_coordinate().y.into(), 10).expect("The y coordinate can never be larger than 9"));
+        notation
+    }
+
     /// I don't think I love where this logic is now, maybe it could be nice to add some off the
     /// max values etc to direction and than do all the checking in the boardstate, than I only
     /// have to have this logic once
@@ -71,6 +82,10 @@ impl PawnLocation {
             }
         }
     }
+}
+
+fn number_to_alphabet(number: u8) -> char {
+    ALPHABET[usize::from(number - 1)]
 }
 
 #[derive(EnumIter, Debug, PartialEq)]

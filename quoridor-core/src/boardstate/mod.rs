@@ -52,64 +52,7 @@ impl Boardstate {
     // problably will need some sort off method to start the board off in a certain position,
     // either from notation or from some other thing.
     //
-    pub fn print_board_state(&self) {
-        for y in (1u8..=9).rev() {
-            let mut horizontal_walls = String::from("  |");
-            for x in 1u8..=9 {
-                let square = ((y - 1) * 9) + x;
-                horizontal_walls.push_str(&self.format_horizontal_wall(square));
-            }
-            println!("{horizontal_walls}");
 
-            let mut vertical_walls_and_paws = format!("{y} |");
-            for x in 1u8..=9 {
-                let square = ((y - 1) * 9) + x;
-                vertical_walls_and_paws.push_str(
-                    format!(
-                        "  {}  {}",
-                        self.format_pawn(square),
-                        self.format_vertical_wall(square)
-                    )
-                    .as_str(),
-                );
-            }
-            println!("{vertical_walls_and_paws}");
-        }
-        println!("  |-----|-----|-----|-----|-----|-----|-----|-----|-----|");
-        println!("     A     B     C     D     E     F     G     H     I   ");
-    }
-
-    fn format_pawn(&self, square: u8) -> char {
-        if self.white_position.get_square() == square {
-            return 'O';
-        }
-        if self.black_position.get_square() == square {
-            return 'X';
-        }
-        ' '
-    }
-
-    fn format_horizontal_wall(&self, square: u8) -> String {
-        let mut horizontal_line = String::from("--");
-        if self.horizontal_blocks.contains(square.into()){
-            horizontal_line.push('#')
-        } else {
-            horizontal_line.push('-')
-        }
-        if square < 71 && self.wall_positions[usize::from(square)].is_some() {
-            horizontal_line.push_str("--#");
-        } else {
-            horizontal_line.push_str("--|");
-        }
-        horizontal_line
-    }
-
-    fn format_vertical_wall(&self, square: u8) -> char {
-        if self.vertical_blocks.contains(square.into()) {
-            return '#';
-        }
-        '|'
-    }
 
     pub fn get_position_white_pawn(&self) -> &PawnLocation {
         &self.white_position
@@ -312,6 +255,65 @@ impl Boardstate {
                 PawnLocation::build(location.get_square() - 1)
             }
         }
+    }
+
+    pub fn print_board_state(&self) {
+        for y in (1u8..=9).rev() {
+            let mut horizontal_walls = String::from("  |");
+            for x in 1u8..=9 {
+                let square = ((y - 1) * 9) + x;
+                horizontal_walls.push_str(&self.format_horizontal_wall(square));
+            }
+            println!("{horizontal_walls}");
+
+            let mut vertical_walls_and_paws = format!("{y} |");
+            for x in 1u8..=9 {
+                let square = ((y - 1) * 9) + x;
+                vertical_walls_and_paws.push_str(
+                    format!(
+                        "  {}  {}",
+                        self.format_pawn(square),
+                        self.format_vertical_wall(square)
+                    )
+                    .as_str(),
+                );
+            }
+            println!("{vertical_walls_and_paws}");
+        }
+        println!("  |-----|-----|-----|-----|-----|-----|-----|-----|-----|");
+        println!("     A     B     C     D     E     F     G     H     I   ");
+    }
+
+    fn format_pawn(&self, square: u8) -> char {
+        if self.white_position.get_square() == square {
+            return 'O';
+        }
+        if self.black_position.get_square() == square {
+            return 'X';
+        }
+        ' '
+    }
+
+    fn format_horizontal_wall(&self, square: u8) -> String {
+        let mut horizontal_line = String::from("--");
+        if self.horizontal_blocks.contains(square.into()){
+            horizontal_line.push('#')
+        } else {
+            horizontal_line.push('-')
+        }
+        if square < 71 && self.wall_positions[usize::from(square)].is_some() {
+            horizontal_line.push_str("--#");
+        } else {
+            horizontal_line.push_str("--|");
+        }
+        horizontal_line
+    }
+
+    fn format_vertical_wall(&self, square: u8) -> char {
+        if self.vertical_blocks.contains(square.into()) {
+            return '#';
+        }
+        '|'
     }
 }
 
