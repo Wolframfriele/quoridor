@@ -32,7 +32,7 @@ impl PawnLocation {
     pub fn from_notation(notation: &str) -> Result<Self, String> {
         let coordinate = convert_to_coordinate(notation)?;
         Ok(PawnLocation {
-            square: (coordinate.y - 1) * 9 + coordinate.x,
+            square: convert_to_square(coordinate),
         })
     }
 
@@ -94,13 +94,13 @@ pub enum Direction {
     West,
 }
 
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, PartialEq)]
 pub enum WallOrientation {
     Horizontal,
     Vertical,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct WallLocation {
     square: u8,
     orientation: WallOrientation,
@@ -118,6 +118,18 @@ impl WallLocation {
             })
         } else {
             Err(format!("The square should be in the range 1..=71 and should not be divisible by 9, but was {square}"))
+        }
+    }
+
+    pub fn from_notation(notation: &str) -> Result<Self, String> {
+        if !notation.len() == 3 {
+            return Err(format!("The notation for a wall needs to be 3 chars long, got {}", notation.len()))
+        }
+        let coordinate = convert_to_coordinate(&notation[0..2])?;
+        match notation.chars().nth(2) {
+            Some('v' | 'V') => Ok(WallLocation{ square: convert_to_square(coordinate), orientation: WallOrientation::Vertical}),
+            Some('h' | 'H') => Ok(WallLocation{ square: convert_to_square(coordinate), orientation: WallOrientation::Horizontal}),
+            _ => Err(String::from("The last character of the notation needs to be either a v or an h"))
         }
     }
 
@@ -207,6 +219,10 @@ fn convert_to_coordinate(notation: &str) -> Result<Coordinate, String> {
     Err(format!("The first character of a notation needs to be a letter between A and I, but got {uppercase_first_char}"))
 }
 
+fn convert_to_square(coordinate: Coordinate) -> u8 {
+    (coordinate.y - 1) * 9 + coordinate.x
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -233,10 +249,10 @@ mod tests {
         let input_and_expected = [
             ("A1", PawnLocation::build(1).unwrap()),
             ("A9", PawnLocation::build(73).unwrap()),
-            ("B6", PawnLocation::build(47).unwrap()),
+            ("b6", PawnLocation::build(47).unwrap()),
             ("E6", PawnLocation::build(50).unwrap()),
             ("H8", PawnLocation::build(71).unwrap()),
-            ("I1", PawnLocation::build(9).unwrap()),
+            ("i1", PawnLocation::build(9).unwrap()),
             ("I9", PawnLocation::build(81).unwrap()),
         ];
         for (input, expected) in input_and_expected {
@@ -302,5 +318,21 @@ mod tests {
     #[should_panic]
     fn new_walllocation_failed() {
         let location = WallLocation::build(36, WallOrientation::Horizontal).unwrap();
+    }
+
+    #[test]
+    fn wall_location_from_notation() {
+        let input_and_expected = [
+            ("A1v", WallLocation::build(1, WallOrientation::Vertical).unwrap()),
+            ("A8h", WallLocation::build(64, WallOrientation::Horizontal).unwrap()),
+            ("B6v", WallLocation::build(47, WallOrientation::Vertical).unwrap()),
+            ("E6h", WallLocation::build(50, WallOrientation::Horizontal).unwrap()),
+            ("F8v", WallLocation::build(69, WallOrientation::Vertical).unwrap()),
+            ("H1h", WallLocation::build(8, WallOrientation::Horizontal).unwrap()),
+            ("H8v", WallLocation::build(71, WallOrientation::Vertical).unwrap()),
+        ];
+        for (input, expected) in input_and_expected {
+            assert_eq!(WallLocation::from_notation(input).unwrap(), expected);
+        }
     }
 }
