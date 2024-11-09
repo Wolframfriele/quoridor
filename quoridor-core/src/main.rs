@@ -1,9 +1,14 @@
-use quoridor_core::boardstate::Boardstate;
+use quoridor_core::boardstate::locations::{WallLocation, WallOrientation};
+use quoridor_core::boardstate::{Action, Boardstate};
 
 fn main() {
-    let boardstate = Boardstate::new();
-    let moves = boardstate.get_legal_moves();
-    for new_location in moves.get_pawn_actions() {
-        println!("{:?}", new_location.get_coordinate());
-    }
+    let mut boardstate = Boardstate::new();
+    let _ = boardstate.play_action(Action::Wall(
+        WallLocation::build(5, WallOrientation::Vertical).unwrap(),
+    ));
+    let _ = boardstate.play_action(Action::Wall(
+        WallLocation::build(25, WallOrientation::Horizontal).unwrap(),
+    ));
+    boardstate.print_board_state();
+    // let moves = boardstate.get_legal_moves();
 }

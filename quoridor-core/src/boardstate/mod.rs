@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-mod locations;
+pub mod locations;
 
 use fixedbitset::FixedBitSet;
-use locations::{PawnLocation, WallLocation, WallOrientation};
+use locations::{Direction, PawnLocation, WallLocation, WallOrientation};
 use strum::IntoEnumIterator;
 
 #[derive(Clone, Hash, Debug)]
@@ -51,6 +51,65 @@ impl Boardstate {
 
     // problably will need some sort off method to start the board off in a certain position,
     // either from notation or from some other thing.
+    //
+    pub fn print_board_state(&self) {
+        for y in (1u8..=9).rev() {
+            let mut horizontal_walls = String::from("  |");
+            for x in 1u8..=9 {
+                let square = ((y - 1) * 9) + x;
+                horizontal_walls.push_str(&self.format_horizontal_wall(square));
+            }
+            println!("{horizontal_walls}");
+
+            let mut vertical_walls_and_paws = format!("{y} |");
+            for x in 1u8..=9 {
+                let square = ((y - 1) * 9) + x;
+                vertical_walls_and_paws.push_str(
+                    format!(
+                        "  {}  {}",
+                        self.format_pawn(square),
+                        self.format_vertical_wall(square)
+                    )
+                    .as_str(),
+                );
+            }
+            println!("{vertical_walls_and_paws}");
+        }
+        println!("  |-----|-----|-----|-----|-----|-----|-----|-----|-----|");
+        println!("     A     B     C     D     E     F     G     H     I   ");
+    }
+
+    fn format_pawn(&self, square: u8) -> char {
+        if self.white_position.get_square() == square {
+            return 'O';
+        }
+        if self.black_position.get_square() == square {
+            return 'X';
+        }
+        ' '
+    }
+
+    fn format_horizontal_wall(&self, square: u8) -> String {
+        let mut horizontal_line = String::from("--");
+        if self.horizontal_blocks.contains(square.into()){
+            horizontal_line.push('#')
+        } else {
+            horizontal_line.push('-')
+        }
+        if square < 71 && self.wall_positions[usize::from(square)].is_some() {
+            horizontal_line.push_str("--#");
+        } else {
+            horizontal_line.push_str("--|");
+        }
+        horizontal_line
+    }
+
+    fn format_vertical_wall(&self, square: u8) -> char {
+        if self.vertical_blocks.contains(square.into()) {
+            return '#';
+        }
+        '|'
+    }
 
     pub fn get_position_white_pawn(&self) -> &PawnLocation {
         &self.white_position
@@ -99,8 +158,8 @@ impl Boardstate {
     /// returned, otherwise the active player is swapped and an InProgress enum is returned
     pub fn play_action(&mut self, action: Action) -> Result<(), String> {
         match action {
-            Action::Pawn(location) => self.move_pawn_to_location(location),
-            Action::Wall(wall_location) => Ok(()),
+            Action::Pawn(pawn_location) => self.move_pawn_to_location(pawn_location),
+            Action::Wall(wall_location) => self.insert_wall_at_location(wall_location),
         }
     }
 
@@ -111,7 +170,7 @@ impl Boardstate {
         Ok(())
     }
 
-    fn insert_wall_at_location(&self, location: WallLocation) -> Result<(), String> {
+    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<(), String> {
         // Check if no wall exists at the location.
         // Check if none off the edges for the WallLocation are set already.
         // If location is clear, set wall else return error.
@@ -119,6 +178,27 @@ impl Boardstate {
         // Run path finding from both pawns to check if it is still possible to reach the other
         // side.
         // If this is impossible undo the wall placement and return error.
+        let state_at_location = &self.wall_positions[usize::from(location.get_square())];
+        if state_at_location.is_some() {
+            return Err(format!(
+                "Can't insert wall at location: {}. A wall already exists",
+                location.get_square()
+            ));
+        }
+        self.wall_positions[usize::from(location.get_square())] = Some(location.get_orientation());
+        match location.get_orientation() {
+            WallOrientation::Horizontal => {
+                self.horizontal_blocks
+                    .set(location.get_square().into(), true);
+                self.horizontal_blocks
+                    .set((location.get_square() + 1).into(), true)
+            }
+            WallOrientation::Vertical => {
+                self.vertical_blocks.set(location.get_square().into(), true);
+                self.vertical_blocks
+                    .set((location.get_square() + 9).into(), true)
+            }
+        }
 
         Ok(())
     }
@@ -166,11 +246,11 @@ impl Boardstate {
     /// At some point this should probably also handle the jump
     fn check_direction(
         &self,
-        location: &locations::PawnLocation,
-        direction: &locations::Direction,
-    ) -> Result<locations::PawnLocation, String> {
+        location: &PawnLocation,
+        direction: &Direction,
+    ) -> Result<PawnLocation, String> {
         match direction {
-            locations::Direction::North => {
+            Direction::North => {
                 if location.get_coordinate().y == 9 {
                     return Err(format!("Going North from square {0} is impossible since it is on the edge of the board", location.get_square()));
                 }
@@ -186,7 +266,7 @@ impl Boardstate {
 
                 PawnLocation::build(location.get_square() + 9)
             }
-            locations::Direction::East => {
+            Direction::East => {
                 if location.get_coordinate().x == 9 {
                     return Err(format!("Going East from square {0} is impossible since it is on the edge of the board", location.get_square()));
                 }
@@ -199,7 +279,7 @@ impl Boardstate {
 
                 PawnLocation::build(location.get_square() + 1)
             }
-            locations::Direction::South => {
+            Direction::South => {
                 if location.get_coordinate().y == 1 {
                     return Err(format!("Going West from square {0} is impossible since it is on the edge of the board", location.get_square()));
                 }
@@ -215,7 +295,7 @@ impl Boardstate {
 
                 PawnLocation::build(location.get_square() - 9)
             }
-            locations::Direction::West => {
+            Direction::West => {
                 if location.get_coordinate().x == 1 {
                     return Err(format!("Going West from square {0} is impossible since it is on the edge of the board", location.get_square()));
                 }
@@ -303,9 +383,9 @@ mod tests {
         let boardstate = Boardstate::new();
         let result = boardstate.get_possible_pawn_moves();
         let expected = vec![
-            locations::PawnLocation::build(14).unwrap(),
-            locations::PawnLocation::build(6).unwrap(),
-            locations::PawnLocation::build(4).unwrap(),
+            PawnLocation::build(14).unwrap(),
+            PawnLocation::build(6).unwrap(),
+            PawnLocation::build(4).unwrap(),
         ];
         assert_eq!(result, expected);
     }
@@ -313,17 +393,20 @@ mod tests {
     #[test]
     fn move_pawn_up_from_starting_position() {
         let mut boardstate = Boardstate::new();
-        boardstate.move_pawn_to_location(PawnLocation::build(14).unwrap()).unwrap();
-        
-        assert_eq!(boardstate
-            .get_position_white_pawn().get_square(), 14);
+        boardstate
+            .move_pawn_to_location(PawnLocation::build(14).unwrap())
+            .unwrap();
+
+        assert_eq!(boardstate.get_position_white_pawn().get_square(), 14);
     }
 
     #[test]
     #[should_panic]
     fn move_pawn_to_center_from_starting_position() {
         let mut boardstate = Boardstate::new();
-        boardstate.move_pawn_to_location(PawnLocation::build(41).unwrap()).unwrap();
+        boardstate
+            .move_pawn_to_location(PawnLocation::build(41).unwrap())
+            .unwrap();
     }
 
     #[test]

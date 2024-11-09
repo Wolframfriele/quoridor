@@ -112,6 +112,10 @@ impl WallLocation {
         assert!((1..=71).contains(&self.square));
         self.square
     }
+
+    pub fn get_orientation(&self) -> WallOrientation {
+        self.orientation.clone()
+    }
 }
 
 #[cfg(test)]
