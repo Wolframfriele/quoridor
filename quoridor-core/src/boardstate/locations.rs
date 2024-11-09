@@ -261,6 +261,19 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn pawn_location_from_notation_failed() {
+        let inputs = [
+            "x1",
+            "A1v",
+            "B0",
+        ];
+        for input in inputs {
+            PawnLocation::from_notation(input).unwrap();
+        }
+    }
+
+    #[test]
     fn new_pawn_location_from_direction_east_succesfull() {
         let starting_location = PawnLocation::build(5).unwrap();
         let result = starting_location.new_location_from_direction(Direction::East);
@@ -335,4 +348,20 @@ mod tests {
             assert_eq!(WallLocation::from_notation(input).unwrap(), expected);
         }
     }
+
+    #[test]
+    #[should_panic]
+    fn wall_location_from_notation_failed() {
+        let inputs = [
+            "A1",
+            "x1v",
+            "B0h",
+            "c0x",
+        ];
+        for input in inputs {
+            WallLocation::from_notation(input).unwrap();
+        }
+    }
+
+
 }

@@ -329,25 +329,25 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn from_notation(coordinate_notation: &str) -> Result<Self, String> {
-        // WIP Ipmlementations since it made more sense to have this method on the Action struct,
-        // but I won't need this until much later
-        match coordinate_notation.len() {
+    pub fn from_notation(notation: &str) -> Result<Self, String> {
+        match notation.len() {
             0..=1 => Err(
                 "Trying to create an action from a notation string that has less than 2 characters"
                     .to_string(),
             ),
-            2 => Ok(Action::Pawn(PawnLocation::build(5).unwrap())),
-            3 => Ok(Action::Wall(
-                WallLocation::build(5, WallOrientation::Horizontal).unwrap(),
-            )),
+            2 => {
+                let pawn_location = PawnLocation::from_notation(notation)?;
+                Ok(Action::Pawn(pawn_location))
+            },
+            3 => {
+                let wall_location = WallLocation::from_notation(notation)?;
+                Ok(Action::Wall(wall_location))
+            },
             _ => Err(
                 "Trying to create an action from a notation string that has more than 3 characters"
                     .to_string(),
             ),
         }
-
-        //     if let Some(x) =['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'].iter().position(|&i| i == x) {
     }
 }
 
@@ -412,19 +412,18 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn new_action_from_too_short_notation_failed() {
-        Action::from_notation("a").unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn new_action_from_too_long_notation_failed() {
-        Action::from_notation("B1vx").unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn new_action_from_incorrect_notation_failed() {
-        Action::from_notation("x1").unwrap();
+    fn new_action_notation_failed() {
+        let inputs = [
+            "a",
+            "x1v",
+            "B0h",
+            "c1x",
+            "B1vx",
+            "x1",
+            "A12",
+        ];
+        for input in inputs {
+            Action::from_notation(input).unwrap();
+        }
     }
 }
