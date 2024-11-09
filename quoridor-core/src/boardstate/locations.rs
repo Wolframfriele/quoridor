@@ -52,10 +52,7 @@ impl PawnLocation {
     }
 
     pub fn get_notation(&self) -> String {
-        let mut notation = String::new();
-        notation.push(number_to_alphabet(self.get_coordinate().x));
-        notation.push(char::from_digit(self.get_coordinate().y.into(), 10).expect("The y coordinate can never be larger than 9"));
-        notation
+        convert_to_notation(self.get_coordinate(), None)
     }
 
     /// I don't think I love where this logic is now, maybe it could be nice to add some off the
@@ -86,6 +83,22 @@ impl PawnLocation {
 
 fn number_to_alphabet(number: u8) -> char {
     ALPHABET[usize::from(number - 1)]
+}
+
+fn convert_to_notation(coordinate: Coordinate, orientation: Option<WallOrientation>) -> String {
+    assert!(coordinate.x <= 9);
+    assert!(coordinate.y <= 9);
+
+    let mut notation = String::new();
+    notation.push(number_to_alphabet(coordinate.x));
+    notation.push(char::from_digit(coordinate.y.into(), 10).expect("The y coordinate can never be larger than 9"));
+
+    match orientation {
+        Some(WallOrientation::Horizontal) => notation.push('h'),
+        Some(WallOrientation::Vertical) => notation.push('v'),
+        _ => (),
+    }
+    notation
 }
 
 #[derive(EnumIter, Debug, PartialEq)]
@@ -130,6 +143,26 @@ impl WallLocation {
 
     pub fn get_orientation(&self) -> WallOrientation {
         self.orientation.clone()
+    }
+
+    pub fn get_notation(&self) -> String {
+        convert_to_notation(self.get_coordinate(), Some(self.get_orientation()))
+    }
+
+
+    fn get_coordinate(&self) -> Coordinate {
+        let remainder = &self.square % 9;
+        if remainder == 0 {
+            Coordinate {
+                x: 9,
+                y: &self.square / 9,
+            }
+        } else {
+            Coordinate {
+                x: remainder,
+                y: (&self.square / 9) + 1,
+            }
+        }
     }
 }
 
