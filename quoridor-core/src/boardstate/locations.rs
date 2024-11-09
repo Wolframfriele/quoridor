@@ -1,5 +1,3 @@
-use std::usize;
-
 use strum::EnumIter;
 
 const ALPHABET: [char; 9] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
@@ -29,6 +27,13 @@ impl PawnLocation {
                 "The square should be in range 1..=81, but was: {square}"
             ))
         }
+    }
+
+    pub fn from_notation(notation: &str) -> Result<Self, String> {
+        let coordinate = convert_to_coordinate(notation)?;
+        Ok(PawnLocation {
+            square: (coordinate.y - 1) * 9 + coordinate.x,
+        })
     }
 
     pub fn get_square(&self) -> u8 {
@@ -81,26 +86,6 @@ impl PawnLocation {
     }
 }
 
-fn number_to_alphabet(number: u8) -> char {
-    ALPHABET[usize::from(number - 1)]
-}
-
-fn convert_to_notation(coordinate: Coordinate, orientation: Option<WallOrientation>) -> String {
-    assert!(coordinate.x <= 9);
-    assert!(coordinate.y <= 9);
-
-    let mut notation = String::new();
-    notation.push(number_to_alphabet(coordinate.x));
-    notation.push(char::from_digit(coordinate.y.into(), 10).expect("The y coordinate can never be larger than 9"));
-
-    match orientation {
-        Some(WallOrientation::Horizontal) => notation.push('h'),
-        Some(WallOrientation::Vertical) => notation.push('v'),
-        _ => (),
-    }
-    notation
-}
-
 #[derive(EnumIter, Debug, PartialEq)]
 pub enum Direction {
     North,
@@ -149,7 +134,6 @@ impl WallLocation {
         convert_to_notation(self.get_coordinate(), Some(self.get_orientation()))
     }
 
-
     fn get_coordinate(&self) -> Coordinate {
         let remainder = &self.square % 9;
         if remainder == 0 {
@@ -164,6 +148,63 @@ impl WallLocation {
             }
         }
     }
+}
+
+fn number_to_alphabet(number: u8) -> char {
+    ALPHABET[usize::from(number - 1)]
+}
+
+fn convert_to_notation(coordinate: Coordinate, orientation: Option<WallOrientation>) -> String {
+    assert!(coordinate.x <= 9);
+    assert!(coordinate.y <= 9);
+
+    let mut notation = String::new();
+    notation.push(number_to_alphabet(coordinate.x));
+    notation.push(
+        char::from_digit(coordinate.y.into(), 10)
+            .expect("The y coordinate can never be larger than 9"),
+    );
+
+    match orientation {
+        Some(WallOrientation::Horizontal) => notation.push('h'),
+        Some(WallOrientation::Vertical) => notation.push('v'),
+        _ => (),
+    }
+    notation
+}
+
+fn convert_to_coordinate(notation: &str) -> Result<Coordinate, String> {
+    if notation.len() != 2 {
+        return Err(format!(
+            "A pawn location notation needs to be 2 characters, but was {} characters",
+            notation.len()
+        ));
+    }
+    let uppercase_first_char = notation
+        .to_ascii_uppercase()
+        .chars()
+        .next()
+        .expect("Already verified that notation contains 2 chars");
+    let second_char = notation
+        .chars()
+        .nth(1)
+        .expect("Already verified that notation contains 2 chars");
+
+    if let Ok(index) = ALPHABET.binary_search(&uppercase_first_char) {
+        if let Some(y) = second_char.to_digit(10) {
+            if y != 0 {
+                return Ok(Coordinate {
+                    x: (index + 1).try_into().unwrap(),
+                    y: y.try_into().unwrap(),
+                });
+            }
+            return Err(String::from("The second character can not be 0"));
+        }
+        return Err(format!(
+            "The second character needs to be a number between 1 and 9, but got {second_char}"
+        ));
+    }
+    Err(format!("The first character of a notation needs to be a letter between A and I, but got {uppercase_first_char}"))
 }
 
 #[cfg(test)]
@@ -184,6 +225,22 @@ mod tests {
         for (input, expected) in combinations {
             assert_eq!(input.get_coordinate().x, expected.x);
             assert_eq!(input.get_coordinate().y, expected.y);
+        }
+    }
+
+    #[test]
+    fn pawn_location_from_notation() {
+        let input_and_expected = [
+            ("A1", PawnLocation::build(1).unwrap()),
+            ("A9", PawnLocation::build(73).unwrap()),
+            ("B6", PawnLocation::build(47).unwrap()),
+            ("E6", PawnLocation::build(50).unwrap()),
+            ("H8", PawnLocation::build(71).unwrap()),
+            ("I1", PawnLocation::build(9).unwrap()),
+            ("I9", PawnLocation::build(81).unwrap()),
+        ];
+        for (input, expected) in input_and_expected {
+            assert_eq!(PawnLocation::from_notation(input).unwrap(), expected);
         }
     }
 

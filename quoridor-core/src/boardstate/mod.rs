@@ -53,7 +53,6 @@ impl Boardstate {
     // either from notation or from some other thing.
     //
 
-
     pub fn get_position_white_pawn(&self) -> &PawnLocation {
         &self.white_position
     }
@@ -296,7 +295,7 @@ impl Boardstate {
 
     fn format_horizontal_wall(&self, square: u8) -> String {
         let mut horizontal_line = String::from("--");
-        if self.horizontal_blocks.contains(square.into()){
+        if self.horizontal_blocks.contains(square.into()) {
             horizontal_line.push('#')
         } else {
             horizontal_line.push('-')

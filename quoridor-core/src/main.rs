@@ -12,7 +12,7 @@ fn main() {
     boardstate.print_board_state();
     let moves = boardstate.get_legal_moves();
     println!("Possible pawn moves:");
-    for new_location in moves.get_pawn_actions(){
+    for new_location in moves.get_pawn_actions() {
         println!("{}", new_location.get_notation());
     }
 }
