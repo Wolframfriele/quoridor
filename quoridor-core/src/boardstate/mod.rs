@@ -22,7 +22,7 @@ pub struct Boardstate {
     black_position: PawnLocation,
     white_available_walls: u8,
     black_available_walls: u8,
-    wall_positions: [Option<WallOrientation>; 72],
+    wall_positions: [Option<WallOrientation>; 71],
     horizontal_blocks: FixedBitSet,
     vertical_blocks: FixedBitSet,
 }
@@ -31,15 +31,15 @@ impl Default for Boardstate {
     fn default() -> Boardstate {
         Boardstate {
             active_player: Player::White,
-            white_position: PawnLocation::build(5)
+            white_position: PawnLocation::build(4)
                 .expect("White player starting location on square 5 should be a valid location."),
-            black_position: PawnLocation::build(77)
+            black_position: PawnLocation::build(76)
                 .expect("Black player starting location on square 77 should be a valid location."),
             white_available_walls: 10,
             black_available_walls: 10,
-            wall_positions: [const { None }; 72],
-            horizontal_blocks: FixedBitSet::with_capacity(73),
-            vertical_blocks: FixedBitSet::with_capacity(81),
+            wall_positions: [const { None }; 71],
+            horizontal_blocks: FixedBitSet::with_capacity(72),
+            vertical_blocks: FixedBitSet::with_capacity(80),
         }
     }
 }
@@ -73,7 +73,7 @@ impl Boardstate {
         &self.black_available_walls
     }
 
-    pub fn get_wall_positions(&self) -> &[Option<WallOrientation>; 72] {
+    pub fn get_wall_positions(&self) -> &[Option<WallOrientation>; 71] {
         &self.wall_positions
     }
 
@@ -231,7 +231,7 @@ impl Boardstate {
     ) -> Result<PawnLocation, String> {
         match direction {
             Direction::North => {
-                if location.get_coordinate().y == 9 {
+                if location.get_coordinate().y == 8 {
                     return Err(format!("Going North from square {0} is impossible since it is on the edge of the board", location.get_square()));
                 }
                 if self
@@ -249,7 +249,7 @@ impl Boardstate {
                 ))
             }
             Direction::East => {
-                if location.get_coordinate().x == 9 {
+                if location.get_coordinate().x == 8 {
                     return Err(format!("Going East from square {0} is impossible since it is on the edge of the board", location.get_square()));
                 }
                 if self.vertical_blocks.contains(location.get_square().into()) {
@@ -264,7 +264,7 @@ impl Boardstate {
                 ))
             }
             Direction::South => {
-                if location.get_coordinate().y == 1 {
+                if location.get_coordinate().y == 0 {
                     return Err(format!("Going West from square {0} is impossible since it is on the edge of the board", location.get_square()));
                 }
                 if self
@@ -282,7 +282,7 @@ impl Boardstate {
                 ))
             }
             Direction::West => {
-                if location.get_coordinate().x == 1 {
+                if location.get_coordinate().x == 0 {
                     return Err(format!("Going West from square {0} is impossible since it is on the edge of the board", location.get_square()));
                 }
                 if self
@@ -321,17 +321,17 @@ impl Boardstate {
     }
 
     pub fn print_board_state(&self) {
-        for y in (1u8..=9).rev() {
+        for y in (0..=8u8).rev() {
             let mut horizontal_walls = String::from("  |");
-            for x in 1u8..=9 {
-                let square = ((y - 1) * 9) + x;
+            for x in 0..=8u8 {
+                let square = ((y) * 9) + x;
                 horizontal_walls.push_str(&self.format_horizontal_wall(square));
             }
             println!("{horizontal_walls}");
 
-            let mut vertical_walls_and_paws = format!("{y} |");
-            for x in 1u8..=9 {
-                let square = ((y - 1) * 9) + x;
+            let mut vertical_walls_and_paws = format!("{} |", y + 1);
+            for x in 0..=8u8 {
+                let square = ((y) * 9) + x;
                 vertical_walls_and_paws.push_str(
                     format!(
                         "  {}  {}",
@@ -364,7 +364,7 @@ impl Boardstate {
         } else {
             horizontal_line.push('-')
         }
-        if square < 71 && self.wall_positions[usize::from(square)].is_some() {
+        if square < 70 && self.wall_positions[usize::from(square)].is_some() {
             horizontal_line.push_str("--#");
         } else {
             horizontal_line.push_str("--|");
@@ -387,6 +387,7 @@ pub enum Player {
     Black,
 }
 
+#[derive(Clone)]
 pub enum Action {
     Pawn(PawnLocation),
     Wall(WallLocation),
@@ -411,6 +412,13 @@ impl Action {
                 "Trying to create an action from a notation string that has more than 3 characters"
                     .to_string(),
             ),
+        }
+    }
+
+    pub fn get_notation(&self) -> String {
+        match self {
+            Self::Pawn(pawn_location) => pawn_location.get_notation(),
+            Self::Wall(wall_location) => wall_location.get_notation(),
         }
     }
 }
@@ -448,9 +456,9 @@ mod tests {
         let boardstate = Boardstate::new();
         let result = boardstate.get_possible_pawn_moves();
         let expected = vec![
-            PawnLocation::build(14).unwrap(),
-            PawnLocation::build(6).unwrap(),
-            PawnLocation::build(4).unwrap(),
+            PawnLocation::build(13).unwrap(),
+            PawnLocation::build(5).unwrap(),
+            PawnLocation::build(3).unwrap(),
         ];
         assert_eq!(result, expected);
     }
@@ -459,10 +467,10 @@ mod tests {
     fn move_pawn_up_from_starting_position() {
         let mut boardstate = Boardstate::new();
         boardstate
-            .move_pawn_to_location(PawnLocation::build(14).unwrap())
+            .move_pawn_to_location(PawnLocation::build(13).unwrap())
             .unwrap();
 
-        assert_eq!(boardstate.get_position_white_pawn().get_square(), 14);
+        assert_eq!(boardstate.get_position_white_pawn().get_square(), 13);
     }
 
     #[test]
@@ -470,20 +478,20 @@ mod tests {
     fn move_pawn_to_center_from_starting_position() {
         let mut boardstate = Boardstate::new();
         boardstate
-            .move_pawn_to_location(PawnLocation::build(41).unwrap())
+            .move_pawn_to_location(PawnLocation::build(40).unwrap())
             .unwrap();
     }
 
     #[test]
     fn insert_wall_successfull() {
         let mut boardstate = Boardstate::new();
-        boardstate.insert_wall_at_location(WallLocation::build(42, WallOrientation::Horizontal).unwrap()).unwrap();
-        boardstate.insert_wall_at_location(WallLocation::build(1, WallOrientation::Vertical).unwrap()).unwrap();
-        boardstate.insert_wall_at_location(WallLocation::build(71, WallOrientation::Horizontal).unwrap()).unwrap();
+        boardstate.insert_wall_at_location(WallLocation::build(41, WallOrientation::Horizontal).unwrap()).unwrap();
+        boardstate.insert_wall_at_location(WallLocation::build(0, WallOrientation::Vertical).unwrap()).unwrap();
+        boardstate.insert_wall_at_location(WallLocation::build(70, WallOrientation::Horizontal).unwrap()).unwrap();
 
-        assert_eq!(boardstate.get_wall_positions()[42], Some(WallOrientation::Horizontal));
-        assert_eq!(boardstate.get_wall_positions()[1], Some(WallOrientation::Vertical));
-        assert_eq!(boardstate.get_wall_positions()[71], Some(WallOrientation::Horizontal));
+        assert_eq!(boardstate.get_wall_positions()[41], Some(WallOrientation::Horizontal));
+        assert_eq!(boardstate.get_wall_positions()[0], Some(WallOrientation::Vertical));
+        assert_eq!(boardstate.get_wall_positions()[70], Some(WallOrientation::Horizontal));
     }
 
     #[test]

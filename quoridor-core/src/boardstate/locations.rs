@@ -20,7 +20,7 @@ impl PawnLocation {
     ///
     /// The square number must be between 1 and 81, or else an error will be returned.
     pub fn build(square: u8) -> Result<Self, String> {
-        if (1..=81).contains(&square) {
+        if (0..=80).contains(&square) {
             Ok(PawnLocation { square })
         } else {
             Err(format!(
@@ -37,23 +37,16 @@ impl PawnLocation {
     }
 
     pub fn get_square(&self) -> u8 {
-        assert!((1..=81).contains(&self.square));
+        assert!((0..=80).contains(&self.square));
         self.square
     }
 
     pub fn get_coordinate(&self) -> Coordinate {
-        let remainder = &self.square % 9;
-        if remainder == 0 {
-            Coordinate {
-                x: 9,
-                y: &self.square / 9,
-            }
-        } else {
-            Coordinate {
-                x: remainder,
-                y: (&self.square / 9) + 1,
-            }
+        Coordinate {
+            x: &self.square % 9,
+            y: &self.square / 9,
         }
+        
     }
 
     pub fn get_notation(&self) -> String {
@@ -67,7 +60,7 @@ impl PawnLocation {
         match direction {
             Direction::North => PawnLocation::build(&self.square + 9),
             Direction::East => {
-                if self.get_coordinate().x != 9 {
+                if self.get_coordinate().x != 8 {
                     PawnLocation::build(&self.square + 1)
                 } else {
                     Err(format!("Going East from square {0} is impossible since it is on the edge of the board", &self.square))
@@ -75,7 +68,7 @@ impl PawnLocation {
             }
             Direction::South => PawnLocation::build(&self.square - 9),
             Direction::West => {
-                if self.get_coordinate().x != 1 {
+                if self.get_coordinate().x != 0 {
                     PawnLocation::build(&self.square - 1)
                 } else {
                     Err(format!("Going West from square {0} is impossible since it is on the edge of the board", &self.square))
@@ -99,7 +92,7 @@ pub enum WallOrientation {
     Vertical,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct WallLocation {
     square: u8,
     orientation: WallOrientation,
@@ -110,7 +103,7 @@ impl WallLocation {
     /// but the node value can be between 1 and 71. This is because the coordinate of the squares
     /// is
     pub fn build(square: u8, orientation: WallOrientation) -> Result<Self, String> {
-        if (1..=71).contains(&square) && &square % 9 != 0 {
+        if (0..=70).contains(&square) && &square % 9 != 8 {
             Ok(WallLocation {
                 square,
                 orientation,
@@ -144,7 +137,7 @@ impl WallLocation {
     }
 
     pub fn get_square(&self) -> u8 {
-        assert!((1..=71).contains(&self.square));
+        assert!((0..=70).contains(&self.square));
         self.square
     }
 
@@ -157,34 +150,26 @@ impl WallLocation {
     }
 
     fn get_coordinate(&self) -> Coordinate {
-        let remainder = &self.square % 9;
-        if remainder == 0 {
-            Coordinate {
-                x: 9,
-                y: &self.square / 9,
-            }
-        } else {
-            Coordinate {
-                x: remainder,
-                y: (&self.square / 9) + 1,
-            }
+        Coordinate {
+            x: &self.square % 9,
+            y: &self.square / 9,
         }
     }
 }
 
 fn number_to_alphabet(number: u8) -> char {
-    ALPHABET[usize::from(number - 1)]
+    ALPHABET[usize::from(number)]
 }
 
 fn convert_to_notation(coordinate: Coordinate, orientation: Option<WallOrientation>) -> String {
-    assert!(coordinate.x <= 9);
-    assert!(coordinate.y <= 9);
+    assert!(coordinate.x < 9);
+    assert!(coordinate.y < 9);
 
     let mut notation = String::new();
     notation.push(number_to_alphabet(coordinate.x));
     notation.push(
-        char::from_digit(coordinate.y.into(), 10)
-            .expect("The y coordinate can never be larger than 9"),
+        char::from_digit((coordinate.y + 1).into(), 10)
+            .expect("The y coordinate can never be larger than 8"),
     );
 
     match orientation {
@@ -212,12 +197,12 @@ fn convert_to_coordinate(notation: &str) -> Result<Coordinate, String> {
         .nth(1)
         .expect("Already verified that notation contains 2 chars");
 
-    if let Ok(index) = ALPHABET.binary_search(&uppercase_first_char) {
+    if let Ok(x) = ALPHABET.binary_search(&uppercase_first_char) {
         if let Some(y) = second_char.to_digit(10) {
             if y != 0 {
                 return Ok(Coordinate {
-                    x: (index + 1).try_into().unwrap(),
-                    y: y.try_into().unwrap(),
+                    x: x.try_into().unwrap(),
+                    y: (y - 1).try_into().unwrap(),
                 });
             }
             return Err(String::from("The second character can not be 0"));
@@ -230,7 +215,7 @@ fn convert_to_coordinate(notation: &str) -> Result<Coordinate, String> {
 }
 
 fn convert_to_square(coordinate: Coordinate) -> u8 {
-    (coordinate.y - 1) * 9 + coordinate.x
+    (coordinate.y) * 9 + coordinate.x
 }
 
 #[cfg(test)]
@@ -240,13 +225,13 @@ mod tests {
     #[test]
     fn coordinate_from_location() {
         let combinations = [
-            (PawnLocation::build(1).unwrap(), Coordinate { x: 1, y: 1 }),
-            (PawnLocation::build(19).unwrap(), Coordinate { x: 1, y: 3 }),
-            (PawnLocation::build(21).unwrap(), Coordinate { x: 3, y: 3 }),
-            (PawnLocation::build(36).unwrap(), Coordinate { x: 9, y: 4 }),
-            (PawnLocation::build(45).unwrap(), Coordinate { x: 9, y: 5 }),
-            (PawnLocation::build(77).unwrap(), Coordinate { x: 5, y: 9 }),
-            (PawnLocation::build(81).unwrap(), Coordinate { x: 9, y: 9 }),
+            (PawnLocation::build(0).unwrap(), Coordinate { x: 0, y: 0 }),
+            (PawnLocation::build(18).unwrap(), Coordinate { x: 0, y: 2 }),
+            (PawnLocation::build(20).unwrap(), Coordinate { x: 2, y: 2 }),
+            (PawnLocation::build(35).unwrap(), Coordinate { x: 8, y: 3 }),
+            (PawnLocation::build(44).unwrap(), Coordinate { x: 8, y: 4 }),
+            (PawnLocation::build(76).unwrap(), Coordinate { x: 4, y: 8 }),
+            (PawnLocation::build(80).unwrap(), Coordinate { x: 8, y: 8 }),
         ];
         for (input, expected) in combinations {
             assert_eq!(input.get_coordinate().x, expected.x);
@@ -257,13 +242,13 @@ mod tests {
     #[test]
     fn pawn_location_from_notation() {
         let input_and_expected = [
-            ("A1", PawnLocation::build(1).unwrap()),
-            ("A9", PawnLocation::build(73).unwrap()),
-            ("b6", PawnLocation::build(47).unwrap()),
-            ("E6", PawnLocation::build(50).unwrap()),
-            ("H8", PawnLocation::build(71).unwrap()),
-            ("i1", PawnLocation::build(9).unwrap()),
-            ("I9", PawnLocation::build(81).unwrap()),
+            ("A1", PawnLocation::build(0).unwrap()),
+            ("A9", PawnLocation::build(72).unwrap()),
+            ("b6", PawnLocation::build(46).unwrap()),
+            ("E6", PawnLocation::build(49).unwrap()),
+            ("H8", PawnLocation::build(70).unwrap()),
+            ("i1", PawnLocation::build(8).unwrap()),
+            ("I9", PawnLocation::build(80).unwrap()),
         ];
         for (input, expected) in input_and_expected {
             assert_eq!(PawnLocation::from_notation(input).unwrap(), expected);
@@ -281,15 +266,15 @@ mod tests {
 
     #[test]
     fn new_pawn_location_from_direction_east_succesfull() {
-        let starting_location = PawnLocation::build(5).unwrap();
+        let starting_location = PawnLocation::build(4).unwrap();
         let result = starting_location.new_location_from_direction(Direction::East);
-        assert_eq!(result.unwrap().get_square(), 6)
+        assert_eq!(result.unwrap().get_square(), 5)
     }
 
     #[test]
     #[should_panic]
     fn new_pawn_location_from_direction_north_failed() {
-        let starting_location = PawnLocation::build(77).unwrap();
+        let starting_location = PawnLocation::build(76).unwrap();
         let result = starting_location
             .new_location_from_direction(Direction::North)
             .unwrap();
@@ -298,7 +283,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn new_pawn_location_from_direction_east_failed() {
-        let starting_location = PawnLocation::build(9).unwrap();
+        let starting_location = PawnLocation::build(8).unwrap();
         let result = starting_location
             .new_location_from_direction(Direction::East)
             .unwrap();
@@ -307,7 +292,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn new_pawn_location_from_direction_south_failed() {
-        let starting_location = PawnLocation::build(5).unwrap();
+        let starting_location = PawnLocation::build(4).unwrap();
         let result = starting_location
             .new_location_from_direction(Direction::South)
             .unwrap();
@@ -316,7 +301,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn new_pawn_location_from_direction_west_failed() {
-        let starting_location = PawnLocation::build(46).unwrap();
+        let starting_location = PawnLocation::build(45).unwrap();
         let result = starting_location
             .new_location_from_direction(Direction::West)
             .unwrap();
@@ -324,8 +309,8 @@ mod tests {
 
     #[test]
     fn new_walllocation_successfull() {
-        let invalid_square: Vec<u8> = vec![9, 18, 27, 36, 45, 54, 63];
-        for square in 1..=71 {
+        let invalid_square: Vec<u8> = vec![8, 17, 26, 35, 44, 53, 62];
+        for square in 0..=70 {
             if !invalid_square.contains(&square) {
                 let location = WallLocation::build(square, WallOrientation::Vertical).unwrap();
                 assert_eq!(location.get_square(), square);
@@ -336,7 +321,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn new_walllocation_failed() {
-        let location = WallLocation::build(36, WallOrientation::Horizontal).unwrap();
+        let location = WallLocation::build(35, WallOrientation::Horizontal).unwrap();
     }
 
     #[test]
@@ -344,31 +329,31 @@ mod tests {
         let input_and_expected = [
             (
                 "A1v",
-                WallLocation::build(1, WallOrientation::Vertical).unwrap(),
+                WallLocation::build(0, WallOrientation::Vertical).unwrap(),
             ),
             (
                 "A8h",
-                WallLocation::build(64, WallOrientation::Horizontal).unwrap(),
+                WallLocation::build(63, WallOrientation::Horizontal).unwrap(),
             ),
             (
                 "B6v",
-                WallLocation::build(47, WallOrientation::Vertical).unwrap(),
+                WallLocation::build(46, WallOrientation::Vertical).unwrap(),
             ),
             (
                 "E6h",
-                WallLocation::build(50, WallOrientation::Horizontal).unwrap(),
+                WallLocation::build(49, WallOrientation::Horizontal).unwrap(),
             ),
             (
                 "F8v",
-                WallLocation::build(69, WallOrientation::Vertical).unwrap(),
+                WallLocation::build(68, WallOrientation::Vertical).unwrap(),
             ),
             (
                 "H1h",
-                WallLocation::build(8, WallOrientation::Horizontal).unwrap(),
+                WallLocation::build(7, WallOrientation::Horizontal).unwrap(),
             ),
             (
                 "H8v",
-                WallLocation::build(71, WallOrientation::Vertical).unwrap(),
+                WallLocation::build(70, WallOrientation::Vertical).unwrap(),
             ),
         ];
         for (input, expected) in input_and_expected {
