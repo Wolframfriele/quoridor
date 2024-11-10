@@ -107,7 +107,7 @@ impl Boardstate {
     /// new boardstate. When doing the MCTS simulations you will only use random moves from
     /// get_legal_moves, there is no need to execute a bunch of the validation logic around played
     /// actions. And that could save a lot of compute.
-    pub fn play_action(&mut self, action: Action) -> Result<(), String> {
+    pub fn play_action(&mut self, action: Action) -> Result<BoardStatus, String> {
         match action {
             Action::Pawn(pawn_location) => self.move_pawn_to_location(pawn_location),
             Action::Wall(wall_location) => self.insert_wall_at_location(wall_location),
@@ -121,7 +121,7 @@ impl Boardstate {
         Ok(())
     }
 
-    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<(), String> {
+    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<BoardStatus, String> {
         // Check if no wall exists at the location.
         // Check if none off the edges for the WallLocation are set already.
         // If location is clear, set wall else return error.
@@ -178,23 +178,34 @@ impl Boardstate {
             }
         }
 
-        Ok(())
+        Ok(BoardStatus::InProgress)
     }
 
-    fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<(), String> {
+    fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<BoardStatus, String> {
         let possible_pawn_moves = self.get_possible_pawn_moves();
 
         if possible_pawn_moves.contains(&location) {
             match self.active_player {
                 Player::White => {
                     self.white_position = location;
+                    if self.state_is_won() {
+                        // Need to figure out if I still need to switch the game state is won
+                        // it seems sort of important to be able for normal undo behavior in the 
+                        // case of playing the computer?
+                        self.active_player = Player::Black;
+                        return Ok(BoardStatus::Finished(Player::White));
+                    }
                     self.active_player = Player::Black;
-                    return Ok(());
+                    return Ok(BoardStatus::InProgress);
                 }
                 Player::Black => {
                     self.black_position = location;
+                    if self.state_is_won() {
+                        self.active_player = Player::White;
+                        return Ok(BoardStatus::Finished(Player::Black)); 
+                    }
                     self.active_player = Player::White;
-                    return Ok(());
+                    return Ok(BoardStatus::InProgress);
                 }
             }
         }
@@ -318,6 +329,13 @@ impl Boardstate {
             ));
         }
         Ok(location)
+    }
+
+    fn state_is_won(&self) -> bool {
+        match self.active_player {
+            Player::White => self.white_position.get_coordinate().y == 8,
+            Player::Black => self.black_position.get_coordinate().y == 1,
+        }
     }
 
     pub fn print_board_state(&self) {
@@ -445,6 +463,11 @@ impl PossibleActions {
     pub fn get_wall_actions(&self) -> &Vec<WallLocation> {
         &self.wall_actions
     }
+}
+
+pub enum BoardStatus {
+    InProgress,
+    Finished(Player),
 }
 
 #[cfg(test)]
