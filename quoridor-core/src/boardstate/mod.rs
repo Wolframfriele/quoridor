@@ -22,7 +22,7 @@ pub struct Boardstate {
     black_position: PawnLocation,
     white_available_walls: u8,
     black_available_walls: u8,
-    wall_positions: [Option<WallOrientation>; 71],
+    wall_positions: [Option<WallOrientation>; 72],
     horizontal_blocks: FixedBitSet,
     vertical_blocks: FixedBitSet,
 }
@@ -37,9 +37,9 @@ impl Default for Boardstate {
                 .expect("Black player starting location on square 77 should be a valid location."),
             white_available_walls: 10,
             black_available_walls: 10,
-            wall_positions: [const { None }; 71],
-            horizontal_blocks: FixedBitSet::with_capacity(72),
-            vertical_blocks: FixedBitSet::with_capacity(80),
+            wall_positions: [const { None }; 72],
+            horizontal_blocks: FixedBitSet::with_capacity(73),
+            vertical_blocks: FixedBitSet::with_capacity(81),
         }
     }
 }
@@ -52,6 +52,10 @@ impl Boardstate {
     // problably will need some sort off method to start the board off in a certain position,
     // either from notation or from some other thing.
     //
+
+    pub fn get_active_player(&self) -> &Player {
+        &self.active_player
+    }
 
     pub fn get_position_white_pawn(&self) -> &PawnLocation {
         &self.white_position
@@ -69,7 +73,7 @@ impl Boardstate {
         &self.black_available_walls
     }
 
-    pub fn get_wall_positions(&self) -> &[Option<WallOrientation>; 71] {
+    pub fn get_wall_positions(&self) -> &[Option<WallOrientation>; 72] {
         &self.wall_positions
     }
 
@@ -98,6 +102,11 @@ impl Boardstate {
     /// boardstate is updated.
     /// A check is executed if the game is won. When the game is won an enum with the Won result is
     /// returned, otherwise the active player is swapped and an InProgress enum is returned
+    ///
+    /// At some point it is prabably nice to get an unchecked version of this method that returns a
+    /// new boardstate. When doing the MCTS simulations you will only use random moves from
+    /// get_legal_moves, there is no need to execute a bunch of the validation logic around played
+    /// actions. And that could save a lot of compute.
     pub fn play_action(&mut self, action: Action) -> Result<(), String> {
         match action {
             Action::Pawn(pawn_location) => self.move_pawn_to_location(pawn_location),
@@ -120,22 +129,49 @@ impl Boardstate {
         // Run path finding from both pawns to check if it is still possible to reach the other
         // side.
         // If this is impossible undo the wall placement and return error.
-        let state_at_location = &self.wall_positions[usize::from(location.get_square())];
-        if state_at_location.is_some() {
+        if self.wall_positions[usize::from(location.get_square())].is_some() {
             return Err(format!(
                 "Can't insert wall at location: {}. A wall already exists",
                 location.get_square()
             ));
         }
-        self.wall_positions[usize::from(location.get_square())] = Some(location.get_orientation());
+
         match location.get_orientation() {
             WallOrientation::Horizontal => {
+                if self
+                    .horizontal_blocks
+                    .contains(location.get_square().into())
+                    || self
+                        .horizontal_blocks
+                        .contains((location.get_square() + 1).into())
+                {
+                    return Err(format!(
+                        "Can't insert a {} wall at location {}. Because it would overlaps an existing wall",
+                        location.get_orientation(),
+                        location.get_square()
+                    ));
+                }
+                self.wall_positions[usize::from(location.get_square())] =
+                    Some(location.get_orientation());
                 self.horizontal_blocks
                     .set(location.get_square().into(), true);
                 self.horizontal_blocks
                     .set((location.get_square() + 1).into(), true)
             }
             WallOrientation::Vertical => {
+                if self.vertical_blocks.contains(location.get_square().into())
+                    || self
+                        .vertical_blocks
+                        .contains((location.get_square() + 9).into())
+                {
+                    return Err(format!(
+                        "Can't insert a {} wall at location {}. Because it would overlaps an existing wall",
+                        location.get_orientation(),
+                        location.get_square()
+                    ));
+                }
+                self.wall_positions[usize::from(location.get_square())] =
+                    Some(location.get_orientation());
                 self.vertical_blocks.set(location.get_square().into(), true);
                 self.vertical_blocks
                     .set((location.get_square() + 9).into(), true)
@@ -152,10 +188,12 @@ impl Boardstate {
             match self.active_player {
                 Player::White => {
                     self.white_position = location;
+                    self.active_player = Player::Black;
                     return Ok(());
                 }
                 Player::Black => {
                     self.black_position = location;
+                    self.active_player = Player::White;
                     return Ok(());
                 }
             }
@@ -201,12 +239,14 @@ impl Boardstate {
                     .contains(location.get_square().into())
                 {
                     return Err(format!(
-                        "Going North from square {0} is blocked by a wall",
+                        "Going North from square {} is blocked by a wall",
                         location.get_square()
                     ));
                 };
 
-                PawnLocation::build(location.get_square() + 9)
+                self.check_new_location_for_other_player(PawnLocation::build(
+                    location.get_square() + 9,
+                ))
             }
             Direction::East => {
                 if location.get_coordinate().x == 9 {
@@ -219,7 +259,9 @@ impl Boardstate {
                     ));
                 }
 
-                PawnLocation::build(location.get_square() + 1)
+                self.check_new_location_for_other_player(PawnLocation::build(
+                    location.get_square() + 1,
+                ))
             }
             Direction::South => {
                 if location.get_coordinate().y == 1 {
@@ -235,7 +277,9 @@ impl Boardstate {
                     ));
                 }
 
-                PawnLocation::build(location.get_square() - 9)
+                self.check_new_location_for_other_player(PawnLocation::build(
+                    location.get_square() - 9,
+                ))
             }
             Direction::West => {
                 if location.get_coordinate().x == 1 {
@@ -251,9 +295,29 @@ impl Boardstate {
                     ));
                 }
 
-                PawnLocation::build(location.get_square() - 1)
+                self.check_new_location_for_other_player(PawnLocation::build(
+                    location.get_square() - 1,
+                ))
             }
         }
+    }
+
+    fn check_new_location_for_other_player(
+        &self,
+        location: Result<PawnLocation, String>,
+    ) -> Result<PawnLocation, String> {
+        let location = location?;
+        let occupied = match self.active_player {
+            Player::White => location.get_square() == self.black_position.get_square(),
+            Player::Black => location.get_square() == self.white_position.get_square(),
+        };
+        if occupied {
+            return Err(format!(
+                "Going to square {} is blocked by the other player",
+                location.get_square()
+            ));
+        }
+        Ok(location)
     }
 
     pub fn print_board_state(&self) {
@@ -280,7 +344,7 @@ impl Boardstate {
             println!("{vertical_walls_and_paws}");
         }
         println!("  |-----|-----|-----|-----|-----|-----|-----|-----|-----|");
-        println!("     A     B     C     D     E     F     G     H     I   ");
+        println!("     A     B     C     D     E     F     G     H     I   \n\n");
     }
 
     fn format_pawn(&self, square: u8) -> char {
@@ -338,11 +402,11 @@ impl Action {
             2 => {
                 let pawn_location = PawnLocation::from_notation(notation)?;
                 Ok(Action::Pawn(pawn_location))
-            },
+            }
             3 => {
                 let wall_location = WallLocation::from_notation(notation)?;
                 Ok(Action::Wall(wall_location))
-            },
+            }
             _ => Err(
                 "Trying to create an action from a notation string that has more than 3 characters"
                     .to_string(),
@@ -411,17 +475,21 @@ mod tests {
     }
 
     #[test]
+    fn insert_wall_successfull() {
+        let mut boardstate = Boardstate::new();
+        boardstate.insert_wall_at_location(WallLocation::build(42, WallOrientation::Horizontal).unwrap()).unwrap();
+        boardstate.insert_wall_at_location(WallLocation::build(1, WallOrientation::Vertical).unwrap()).unwrap();
+        boardstate.insert_wall_at_location(WallLocation::build(71, WallOrientation::Horizontal).unwrap()).unwrap();
+
+        assert_eq!(boardstate.get_wall_positions()[42], Some(WallOrientation::Horizontal));
+        assert_eq!(boardstate.get_wall_positions()[1], Some(WallOrientation::Vertical));
+        assert_eq!(boardstate.get_wall_positions()[71], Some(WallOrientation::Horizontal));
+    }
+
+    #[test]
     #[should_panic]
     fn new_action_notation_failed() {
-        let inputs = [
-            "a",
-            "x1v",
-            "B0h",
-            "c1x",
-            "B1vx",
-            "x1",
-            "A12",
-        ];
+        let inputs = ["a", "x1v", "B0h", "c1x", "B1vx", "x1", "A12"];
         for input in inputs {
             Action::from_notation(input).unwrap();
         }

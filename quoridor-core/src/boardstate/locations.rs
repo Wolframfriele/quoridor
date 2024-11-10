@@ -1,4 +1,4 @@
-use strum::EnumIter;
+use strum::{Display, EnumIter};
 
 const ALPHABET: [char; 9] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
@@ -64,7 +64,6 @@ impl PawnLocation {
     /// max values etc to direction and than do all the checking in the boardstate, than I only
     /// have to have this logic once
     fn new_location_from_direction(&self, direction: Direction) -> Result<PawnLocation, String> {
-        println!("{}", 21 % 9);
         match direction {
             Direction::North => PawnLocation::build(&self.square + 9),
             Direction::East => {
@@ -94,7 +93,7 @@ pub enum Direction {
     West,
 }
 
-#[derive(Clone, Hash, Debug, PartialEq)]
+#[derive(Clone, Hash, Debug, PartialEq, Display)]
 pub enum WallOrientation {
     Horizontal,
     Vertical,
@@ -123,13 +122,24 @@ impl WallLocation {
 
     pub fn from_notation(notation: &str) -> Result<Self, String> {
         if !notation.len() == 3 {
-            return Err(format!("The notation for a wall needs to be 3 chars long, got {}", notation.len()))
+            return Err(format!(
+                "The notation for a wall needs to be 3 chars long, got {}",
+                notation.len()
+            ));
         }
         let coordinate = convert_to_coordinate(&notation[0..2])?;
         match notation.chars().nth(2) {
-            Some('v' | 'V') => Ok(WallLocation{ square: convert_to_square(coordinate), orientation: WallOrientation::Vertical}),
-            Some('h' | 'H') => Ok(WallLocation{ square: convert_to_square(coordinate), orientation: WallOrientation::Horizontal}),
-            _ => Err(String::from("The last character of the notation needs to be either a v or an h"))
+            Some('v' | 'V') => Ok(WallLocation {
+                square: convert_to_square(coordinate),
+                orientation: WallOrientation::Vertical,
+            }),
+            Some('h' | 'H') => Ok(WallLocation {
+                square: convert_to_square(coordinate),
+                orientation: WallOrientation::Horizontal,
+            }),
+            _ => Err(String::from(
+                "The last character of the notation needs to be either a v or an h",
+            )),
         }
     }
 
@@ -263,11 +273,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn pawn_location_from_notation_failed() {
-        let inputs = [
-            "x1",
-            "A1v",
-            "B0",
-        ];
+        let inputs = ["x1", "A1v", "B0"];
         for input in inputs {
             PawnLocation::from_notation(input).unwrap();
         }
@@ -336,13 +342,34 @@ mod tests {
     #[test]
     fn wall_location_from_notation() {
         let input_and_expected = [
-            ("A1v", WallLocation::build(1, WallOrientation::Vertical).unwrap()),
-            ("A8h", WallLocation::build(64, WallOrientation::Horizontal).unwrap()),
-            ("B6v", WallLocation::build(47, WallOrientation::Vertical).unwrap()),
-            ("E6h", WallLocation::build(50, WallOrientation::Horizontal).unwrap()),
-            ("F8v", WallLocation::build(69, WallOrientation::Vertical).unwrap()),
-            ("H1h", WallLocation::build(8, WallOrientation::Horizontal).unwrap()),
-            ("H8v", WallLocation::build(71, WallOrientation::Vertical).unwrap()),
+            (
+                "A1v",
+                WallLocation::build(1, WallOrientation::Vertical).unwrap(),
+            ),
+            (
+                "A8h",
+                WallLocation::build(64, WallOrientation::Horizontal).unwrap(),
+            ),
+            (
+                "B6v",
+                WallLocation::build(47, WallOrientation::Vertical).unwrap(),
+            ),
+            (
+                "E6h",
+                WallLocation::build(50, WallOrientation::Horizontal).unwrap(),
+            ),
+            (
+                "F8v",
+                WallLocation::build(69, WallOrientation::Vertical).unwrap(),
+            ),
+            (
+                "H1h",
+                WallLocation::build(8, WallOrientation::Horizontal).unwrap(),
+            ),
+            (
+                "H8v",
+                WallLocation::build(71, WallOrientation::Vertical).unwrap(),
+            ),
         ];
         for (input, expected) in input_and_expected {
             assert_eq!(WallLocation::from_notation(input).unwrap(), expected);
@@ -352,16 +379,9 @@ mod tests {
     #[test]
     #[should_panic]
     fn wall_location_from_notation_failed() {
-        let inputs = [
-            "A1",
-            "x1v",
-            "B0h",
-            "c0x",
-        ];
+        let inputs = ["A1", "x1v", "B0h", "c0x"];
         for input in inputs {
             WallLocation::from_notation(input).unwrap();
         }
     }
-
-
 }

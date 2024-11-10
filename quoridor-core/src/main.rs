@@ -1,4 +1,4 @@
-use quoridor_core::boardstate::locations::{WallLocation, WallOrientation};
+use quoridor_core::boardstate::locations::{PawnLocation, WallLocation, WallOrientation};
 use quoridor_core::boardstate::{Action, Boardstate};
 
 fn main() {
@@ -10,9 +10,17 @@ fn main() {
         WallLocation::build(25, WallOrientation::Horizontal).unwrap(),
     ));
     boardstate.print_board_state();
-    let moves = boardstate.get_legal_moves();
-    println!("Possible pawn moves:");
-    for new_location in moves.get_pawn_actions() {
-        println!("{}", new_location.get_notation());
+
+    // first move
+    if let Err(error) = boardstate.play_action(Action::Pawn(PawnLocation::build(6).unwrap())) {
+        println!("{error}");
+    } else {
+        println!("New boardstate");
+        boardstate.print_board_state();
     }
+
+    // // second move
+    // if boardstate.play_action(Action::Pawn(PawnLocation::build(68).unwrap())).is_ok() {
+    //     boardstate.print_board_state();
+    // }
 }
