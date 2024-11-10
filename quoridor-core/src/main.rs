@@ -1,8 +1,10 @@
 use quoridor_core::boardstate::locations::{PawnLocation, WallLocation, WallOrientation};
 use quoridor_core::boardstate::{Action, Boardstate};
+use std::mem;
 
 fn main() {
     let mut boardstate = Boardstate::new();
+    println!("{}", mem::size_of::<Boardstate>());
     let _ = boardstate.play_action(Action::Wall(
         WallLocation::build(4, WallOrientation::Vertical).unwrap(),
     ));
