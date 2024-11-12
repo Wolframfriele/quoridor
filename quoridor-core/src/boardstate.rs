@@ -1,5 +1,6 @@
 use fixedbitset::FixedBitSet;
 
+use crate::gamestate::{GameStatus, VictoryReason};
 use crate::locations::{PawnLocation, WallLocation, WallOrientation, Direction};
 use crate::actions::{Action, PossibleActions};
 
@@ -106,7 +107,7 @@ impl Boardstate {
     /// new boardstate. When doing the MCTS simulations you will only use random moves from
     /// get_legal_moves, there is no need to execute a bunch of the validation logic around played
     /// actions. And that could save a lot of compute.
-    pub fn apply_action(&mut self, action: Action) -> Result<Status, String> {
+    pub fn apply_action(&mut self, action: Action) -> Result<GameStatus, String> {
         match action {
             Action::Pawn(pawn_location) => self.move_pawn_to_location(pawn_location),
             Action::Wall(wall_location) => self.insert_wall_at_location(wall_location),
@@ -119,7 +120,7 @@ impl Boardstate {
     /// and if the wall doesn't completly block of the opponent from reaching the other side.
     ///
     /// At a successfull insert the active player is swapped.
-    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<Status, String> {
+    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<GameStatus, String> {
         self.check_if_walls_available()?;
         if self.wall_positions[usize::from(location.get_square())].is_some() {
             return Err(format!(
@@ -182,7 +183,7 @@ impl Boardstate {
             }
         }
 
-        Ok(Status::InProgress)
+        Ok(GameStatus::InProgress)
     }
 
     fn check_if_walls_available(&self) -> Result<(), String> {
@@ -210,7 +211,7 @@ impl Boardstate {
         }
     }
 
-    fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<Status, String> {
+    fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<GameStatus, String> {
         let possible_pawn_moves = self.get_possible_pawn_moves();
 
         if possible_pawn_moves.contains(&location) {
@@ -222,19 +223,19 @@ impl Boardstate {
                         // it seems sort of important to be able for normal undo behavior in the
                         // case of playing the computer?
                         self.active_player = Player::Black;
-                        return Ok(Status::Finished(Player::White));
+                        return Ok(GameStatus::Finished{ won_by: Player::White, reason: VictoryReason::ReachedOppositeSide});
                     }
                     self.active_player = Player::Black;
-                    return Ok(Status::InProgress);
+                    return Ok(GameStatus::InProgress);
                 }
                 Player::Black => {
                     self.black_position = location;
                     if self.state_is_won() {
                         self.active_player = Player::White;
-                        return Ok(Status::Finished(Player::Black));
+                        return Ok(GameStatus::Finished{ won_by: Player::Black , reason: VictoryReason::ReachedOppositeSide});
                     }
                     self.active_player = Player::White;
-                    return Ok(Status::InProgress);
+                    return Ok(GameStatus::InProgress);
                 }
             }
         }
@@ -431,11 +432,6 @@ impl Boardstate {
 pub enum Player {
     White,
     Black,
-}
-
-pub enum Status {
-    InProgress,
-    Finished(Player),
 }
 
 #[cfg(test)]
