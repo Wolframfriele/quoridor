@@ -41,10 +41,10 @@ fn main() -> Result<(), String> {
     println!("After start_from:");
     boardstate.print_board_state();
 
-    if let Ok(game_status) = boardstate.play_action(Action::Pawn(PawnLocation::build(76).unwrap()))
+    if let Ok(game_status) = boardstate.apply_action(Action::Pawn(PawnLocation::build(76).unwrap()))
     {
         if let Status::Finished(winning_player) = game_status {
-            println!("Game won by: {}", winning_player);
+            println!("Game won by: {:?}", winning_player);
         }
         boardstate.print_board_state();
     }

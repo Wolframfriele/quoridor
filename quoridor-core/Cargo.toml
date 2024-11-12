@@ -7,12 +7,3 @@ edition = "2021"
 
 fixedbitset = "0.5.7"
 anyhow = "1.0.93"
-strum = { version = "0.26.0", features=["derive"]}
-
-[dependencies.uuid]
-version = "1.11.0"
-features = [
-    "v4",                # Lets you generate random UUIDs
-    "fast-rng",          # Use a faster (but still sufficiently random) RNG
-    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
-]

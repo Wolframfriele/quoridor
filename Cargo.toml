@@ -1,6 +1,6 @@
 [workspace]
 
-members = [
+members = [ "platform",
     "quoridor-core"
 ]
 resolver = "2"

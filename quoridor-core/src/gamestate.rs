@@ -1,13 +1,9 @@
 #![allow(dead_code)]
 
-use uuid::Uuid;
-
 use crate::actions::Action;
 use crate::boardstate::{Boardstate, Player};
 
 pub struct Gamestate {
-    id: Uuid,
-    game_type: GameType,
     time_control: TimeControl,
     board_state: Boardstate,
     white_time_used: usize,
@@ -17,10 +13,8 @@ pub struct Gamestate {
 }
 
 impl Gamestate {
-    pub fn new(game_type: GameType, time_control: TimeControl) -> Self {
+    pub fn new(time_control: TimeControl) -> Self {
         Gamestate {
-            id: Uuid::new_v4(),
-            game_type,
             time_control,
             board_state: Boardstate::new(),
             white_time_used: 0,
@@ -29,13 +23,6 @@ impl Gamestate {
             status: GameStatus::InProgress,
         }
     }
-}
-
-pub enum GameType {
-    PersonVsPerson,
-    PersonVsPersonSameDevice,
-    PersonVsComputer,
-    ComputerVsComputer,
 }
 
 pub enum TimeControl {

@@ -1,8 +1,7 @@
 use fixedbitset::FixedBitSet;
-use strum::{Display, IntoEnumIterator};
 
+use crate::locations::{PawnLocation, WallLocation, WallOrientation, Direction};
 use crate::actions::{Action, PossibleActions};
-use crate::locations::{Direction, PawnLocation, WallLocation, WallOrientation};
 
 #[derive(Clone, Hash, Debug)]
 /// The boardstate is responsible for keeping track of all the pawns and walls placed on the board.
@@ -139,7 +138,7 @@ impl Boardstate {
                         .contains((location.get_square() + 1).into())
                 {
                     return Err(format!(
-                        "Can't insert a {} wall at location {}. Because it would overlaps an existing wall",
+                        "Can't insert a {:?} wall at location {}. Because it would overlaps an existing wall",
                         location.get_orientation(),
                         location.get_square()
                     ));
@@ -165,7 +164,7 @@ impl Boardstate {
                         .contains((location.get_square() + 9).into())
                 {
                     return Err(format!(
-                        "Can't insert a {} wall at location {}. Because it would overlaps an existing wall",
+                        "Can't insert a {:?} wall at location {}. Because it would overlaps an existing wall",
                         location.get_orientation(),
                         location.get_square()
                     ));
@@ -253,7 +252,7 @@ impl Boardstate {
         };
 
         let mut possible_pawn_moves: Vec<PawnLocation> = Vec::with_capacity(4);
-        for direction in Direction::iter() {
+        for direction in [Direction::North, Direction::East, Direction::South, Direction::West] {
             if let Ok(new_location) = self.check_direction(current_location, &direction) {
                 possible_pawn_moves.push(new_location)
             }
@@ -427,14 +426,13 @@ impl Boardstate {
     }
 }
 
-#[derive(Clone, Hash, Debug, Display)]
+#[derive(Clone, Hash, Debug)]
 /// An enum with the two player options
 pub enum Player {
     White,
     Black,
 }
 
-#[derive(Display)]
 pub enum Status {
     InProgress,
     Finished(Player),
