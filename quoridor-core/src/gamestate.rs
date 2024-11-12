@@ -2,7 +2,8 @@
 
 use uuid::Uuid;
 
-use crate::boardstate::{Action, Boardstate, Player};
+use crate::actions::Action;
+use crate::boardstate::{Boardstate, Player};
 
 pub struct Gamestate {
     id: Uuid,

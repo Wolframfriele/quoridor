@@ -1,11 +1,8 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-
-pub mod locations;
-
 use fixedbitset::FixedBitSet;
-use locations::{Direction, PawnLocation, WallLocation, WallOrientation};
-use strum::IntoEnumIterator;
+use strum::{Display, IntoEnumIterator};
+
+use crate::actions::{Action, PossibleActions};
+use crate::locations::{Direction, PawnLocation, WallLocation, WallOrientation};
 
 #[derive(Clone, Hash, Debug)]
 /// The boardstate is responsible for keeping track of all the pawns and walls placed on the board.
@@ -49,9 +46,20 @@ impl Boardstate {
         Boardstate::default()
     }
 
-    // problably will need some sort off method to start the board off in a certain position,
-    // either from notation or from some other thing.
-    //
+    pub fn start_from(
+        white: PawnLocation,
+        black: PawnLocation,
+        walls: Vec<WallLocation>,
+    ) -> Result<Boardstate, String> {
+        let mut boardstate = Boardstate::new();
+        for wall_location in walls {
+            boardstate.insert_wall_at_location(wall_location)?;
+        }
+        boardstate.white_position = white;
+        boardstate.black_position = black;
+
+        Ok(boardstate)
+    }
 
     pub fn get_active_player(&self) -> &Player {
         &self.active_player
@@ -85,16 +93,8 @@ impl Boardstate {
     /// for the wall moves it needs to check all the open wall positions, see what direction would
     /// be available (not blocked by existing wall) and check if it doesn't block all paths to the
     /// opposite side for either player.
-    pub fn get_legal_moves(&self) -> PossibleActions {
-        let mut possible_moves = PossibleActions::default();
-
-        let possible_pawn_moves = self.get_possible_pawn_moves();
-
-        for new_location in possible_pawn_moves {
-            possible_moves.add_pawn_action(new_location);
-        }
-
-        possible_moves
+    pub fn get_legal_actions(&self) -> PossibleActions {
+        PossibleActions::build(self.get_possible_pawn_moves(), Vec::new())
     }
 
     /// The play action takes an action as input and attempts to play that move on the current
@@ -107,28 +107,21 @@ impl Boardstate {
     /// new boardstate. When doing the MCTS simulations you will only use random moves from
     /// get_legal_moves, there is no need to execute a bunch of the validation logic around played
     /// actions. And that could save a lot of compute.
-    pub fn play_action(&mut self, action: Action) -> Result<BoardStatus, String> {
+    pub fn apply_action(&mut self, action: Action) -> Result<Status, String> {
         match action {
             Action::Pawn(pawn_location) => self.move_pawn_to_location(pawn_location),
             Action::Wall(wall_location) => self.insert_wall_at_location(wall_location),
         }
     }
 
-    /// When playing against the computer a player should be able to take back moves, also usefull
-    /// for stepping through a game history. Keeping the history of the game is the responsability
-    /// of the gamestate.
-    pub fn undo_action(&self, action: Action) -> Result<(), String> {
-        Ok(())
-    }
-
-    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<BoardStatus, String> {
-        // Check if no wall exists at the location.
-        // Check if none off the edges for the WallLocation are set already.
-        // If location is clear, set wall else return error.
-        //
-        // Run path finding from both pawns to check if it is still possible to reach the other
-        // side.
-        // If this is impossible undo the wall placement and return error.
+    /// Attempts to insert a wall for the currently active player.
+    ///
+    /// Checks if the player has walls available, if the location is not blocked by another wall
+    /// and if the wall doesn't completly block of the opponent from reaching the other side.
+    ///
+    /// At a successfull insert the active player is swapped.
+    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<Status, String> {
+        self.check_if_walls_available()?;
         if self.wall_positions[usize::from(location.get_square())].is_some() {
             return Err(format!(
                 "Can't insert wall at location: {}. A wall already exists",
@@ -156,7 +149,14 @@ impl Boardstate {
                 self.horizontal_blocks
                     .set(location.get_square().into(), true);
                 self.horizontal_blocks
-                    .set((location.get_square() + 1).into(), true)
+                    .set((location.get_square() + 1).into(), true);
+
+                self.decrease_available_walls();
+
+                self.active_player = match self.active_player {
+                    Player::White => Player::Black,
+                    Player::Black => Player::White,
+                };
             }
             WallOrientation::Vertical => {
                 if self.vertical_blocks.contains(location.get_square().into())
@@ -174,14 +174,44 @@ impl Boardstate {
                     Some(location.get_orientation());
                 self.vertical_blocks.set(location.get_square().into(), true);
                 self.vertical_blocks
-                    .set((location.get_square() + 9).into(), true)
+                    .set((location.get_square() + 9).into(), true);
+                self.decrease_available_walls();
+                self.active_player = match self.active_player {
+                    Player::White => Player::Black,
+                    Player::Black => Player::White,
+                };
             }
         }
 
-        Ok(BoardStatus::InProgress)
+        Ok(Status::InProgress)
     }
 
-    fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<BoardStatus, String> {
+    fn check_if_walls_available(&self) -> Result<(), String> {
+        match self.active_player {
+            Player::White => {
+                if self.white_available_walls >= 1 {
+                    return Ok(());
+                }
+            }
+            Player::Black => {
+                if self.black_available_walls >= 1 {
+                    return Ok(());
+                }
+            }
+        }
+        Err(String::from(
+            "Can't insert wall, the active player has no more walls left.",
+        ))
+    }
+
+    fn decrease_available_walls(&mut self) {
+        match self.active_player {
+            Player::White => self.white_available_walls -= 1,
+            Player::Black => self.black_available_walls -= 1,
+        }
+    }
+
+    fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<Status, String> {
         let possible_pawn_moves = self.get_possible_pawn_moves();
 
         if possible_pawn_moves.contains(&location) {
@@ -190,22 +220,22 @@ impl Boardstate {
                     self.white_position = location;
                     if self.state_is_won() {
                         // Need to figure out if I still need to switch the game state is won
-                        // it seems sort of important to be able for normal undo behavior in the 
+                        // it seems sort of important to be able for normal undo behavior in the
                         // case of playing the computer?
                         self.active_player = Player::Black;
-                        return Ok(BoardStatus::Finished(Player::White));
+                        return Ok(Status::Finished(Player::White));
                     }
                     self.active_player = Player::Black;
-                    return Ok(BoardStatus::InProgress);
+                    return Ok(Status::InProgress);
                 }
                 Player::Black => {
                     self.black_position = location;
                     if self.state_is_won() {
                         self.active_player = Player::White;
-                        return Ok(BoardStatus::Finished(Player::Black)); 
+                        return Ok(Status::Finished(Player::Black));
                     }
                     self.active_player = Player::White;
-                    return Ok(BoardStatus::InProgress);
+                    return Ok(Status::InProgress);
                 }
             }
         }
@@ -223,7 +253,7 @@ impl Boardstate {
         };
 
         let mut possible_pawn_moves: Vec<PawnLocation> = Vec::with_capacity(4);
-        for direction in locations::Direction::iter() {
+        for direction in Direction::iter() {
             if let Ok(new_location) = self.check_direction(current_location, &direction) {
                 possible_pawn_moves.push(new_location)
             }
@@ -257,7 +287,7 @@ impl Boardstate {
 
                 self.check_new_location_for_other_player(PawnLocation::build(
                     location.get_square() + 9,
-                ))
+                )?)
             }
             Direction::East => {
                 if location.get_coordinate().x == 8 {
@@ -272,7 +302,7 @@ impl Boardstate {
 
                 self.check_new_location_for_other_player(PawnLocation::build(
                     location.get_square() + 1,
-                ))
+                )?)
             }
             Direction::South => {
                 if location.get_coordinate().y == 0 {
@@ -290,7 +320,7 @@ impl Boardstate {
 
                 self.check_new_location_for_other_player(PawnLocation::build(
                     location.get_square() - 9,
-                ))
+                )?)
             }
             Direction::West => {
                 if location.get_coordinate().x == 0 {
@@ -308,16 +338,15 @@ impl Boardstate {
 
                 self.check_new_location_for_other_player(PawnLocation::build(
                     location.get_square() - 1,
-                ))
+                )?)
             }
         }
     }
 
     fn check_new_location_for_other_player(
         &self,
-        location: Result<PawnLocation, String>,
+        location: PawnLocation,
     ) -> Result<PawnLocation, String> {
-        let location = location?;
         let occupied = match self.active_player {
             Player::White => location.get_square() == self.black_position.get_square(),
             Player::Black => location.get_square() == self.white_position.get_square(),
@@ -398,74 +427,15 @@ impl Boardstate {
     }
 }
 
-#[derive(Clone, Hash, Debug)]
-/// An enum with the two players
+#[derive(Clone, Hash, Debug, Display)]
+/// An enum with the two player options
 pub enum Player {
     White,
     Black,
 }
 
-#[derive(Clone)]
-pub enum Action {
-    Pawn(PawnLocation),
-    Wall(WallLocation),
-}
-
-impl Action {
-    pub fn from_notation(notation: &str) -> Result<Self, String> {
-        match notation.len() {
-            0..=1 => Err(
-                "Trying to create an action from a notation string that has less than 2 characters"
-                    .to_string(),
-            ),
-            2 => {
-                let pawn_location = PawnLocation::from_notation(notation)?;
-                Ok(Action::Pawn(pawn_location))
-            }
-            3 => {
-                let wall_location = WallLocation::from_notation(notation)?;
-                Ok(Action::Wall(wall_location))
-            }
-            _ => Err(
-                "Trying to create an action from a notation string that has more than 3 characters"
-                    .to_string(),
-            ),
-        }
-    }
-
-    pub fn get_notation(&self) -> String {
-        match self {
-            Self::Pawn(pawn_location) => pawn_location.get_notation(),
-            Self::Wall(wall_location) => wall_location.get_notation(),
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct PossibleActions {
-    pawn_actions: Vec<PawnLocation>,
-    wall_actions: Vec<WallLocation>,
-}
-
-impl PossibleActions {
-    fn add_pawn_action(&mut self, coordinate: PawnLocation) {
-        self.pawn_actions.push(coordinate);
-    }
-
-    fn add_wall_action(&mut self, wall_move: WallLocation) {
-        self.wall_actions.push(wall_move);
-    }
-
-    pub fn get_pawn_actions(&self) -> &Vec<PawnLocation> {
-        &self.pawn_actions
-    }
-
-    pub fn get_wall_actions(&self) -> &Vec<WallLocation> {
-        &self.wall_actions
-    }
-}
-
-pub enum BoardStatus {
+#[derive(Display)]
+pub enum Status {
     InProgress,
     Finished(Player),
 }
@@ -508,21 +478,27 @@ mod tests {
     #[test]
     fn insert_wall_successfull() {
         let mut boardstate = Boardstate::new();
-        boardstate.insert_wall_at_location(WallLocation::build(41, WallOrientation::Horizontal).unwrap()).unwrap();
-        boardstate.insert_wall_at_location(WallLocation::build(0, WallOrientation::Vertical).unwrap()).unwrap();
-        boardstate.insert_wall_at_location(WallLocation::build(70, WallOrientation::Horizontal).unwrap()).unwrap();
+        boardstate
+            .insert_wall_at_location(WallLocation::build(41, WallOrientation::Horizontal).unwrap())
+            .unwrap();
+        boardstate
+            .insert_wall_at_location(WallLocation::build(0, WallOrientation::Vertical).unwrap())
+            .unwrap();
+        boardstate
+            .insert_wall_at_location(WallLocation::build(70, WallOrientation::Horizontal).unwrap())
+            .unwrap();
 
-        assert_eq!(boardstate.get_wall_positions()[41], Some(WallOrientation::Horizontal));
-        assert_eq!(boardstate.get_wall_positions()[0], Some(WallOrientation::Vertical));
-        assert_eq!(boardstate.get_wall_positions()[70], Some(WallOrientation::Horizontal));
-    }
-
-    #[test]
-    #[should_panic]
-    fn new_action_notation_failed() {
-        let inputs = ["a", "x1v", "B0h", "c1x", "B1vx", "x1", "A12"];
-        for input in inputs {
-            Action::from_notation(input).unwrap();
-        }
+        assert_eq!(
+            boardstate.get_wall_positions()[41],
+            Some(WallOrientation::Horizontal)
+        );
+        assert_eq!(
+            boardstate.get_wall_positions()[0],
+            Some(WallOrientation::Vertical)
+        );
+        assert_eq!(
+            boardstate.get_wall_positions()[70],
+            Some(WallOrientation::Horizontal)
+        );
     }
 }

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 
 fixedbitset = "0.5.7"
-thiserror = "2.0.0"
+anyhow = "1.0.93"
 strum = { version = "0.26.0", features=["derive"]}
 
 [dependencies.uuid]

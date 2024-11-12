@@ -2,12 +2,6 @@ use strum::{Display, EnumIter};
 
 const ALPHABET: [char; 9] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
-#[derive(Debug)]
-pub struct Coordinate {
-    pub x: u8,
-    pub y: u8,
-}
-
 #[derive(Clone, Hash, Debug, PartialEq)]
 pub struct PawnLocation {
     square: u8,
@@ -24,15 +18,15 @@ impl PawnLocation {
             Ok(PawnLocation { square })
         } else {
             Err(format!(
-                "The square should be in range 1..=81, but was: {square}"
+                "The square should be in range 0..=80, but was: {square}"
             ))
         }
     }
 
     pub fn from_notation(notation: &str) -> Result<Self, String> {
-        let coordinate = convert_to_coordinate(notation)?;
+        let coordinate = convert_notation_to_coordinate(notation)?;
         Ok(PawnLocation {
-            square: convert_to_square(coordinate),
+            square: convert_coordinate_to_square(coordinate),
         })
     }
 
@@ -46,50 +40,11 @@ impl PawnLocation {
             x: &self.square % 9,
             y: &self.square / 9,
         }
-        
     }
 
     pub fn get_notation(&self) -> String {
-        convert_to_notation(self.get_coordinate(), None)
+        convert_location_to_notation(self.get_square(), None)
     }
-
-    /// I don't think I love where this logic is now, maybe it could be nice to add some off the
-    /// max values etc to direction and than do all the checking in the boardstate, than I only
-    /// have to have this logic once
-    fn new_location_from_direction(&self, direction: Direction) -> Result<PawnLocation, String> {
-        match direction {
-            Direction::North => PawnLocation::build(&self.square + 9),
-            Direction::East => {
-                if self.get_coordinate().x != 8 {
-                    PawnLocation::build(&self.square + 1)
-                } else {
-                    Err(format!("Going East from square {0} is impossible since it is on the edge of the board", &self.square))
-                }
-            }
-            Direction::South => PawnLocation::build(&self.square - 9),
-            Direction::West => {
-                if self.get_coordinate().x != 0 {
-                    PawnLocation::build(&self.square - 1)
-                } else {
-                    Err(format!("Going West from square {0} is impossible since it is on the edge of the board", &self.square))
-                }
-            }
-        }
-    }
-}
-
-#[derive(EnumIter, Debug, PartialEq)]
-pub enum Direction {
-    North,
-    East,
-    South,
-    West,
-}
-
-#[derive(Clone, Hash, Debug, PartialEq, Display)]
-pub enum WallOrientation {
-    Horizontal,
-    Vertical,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -109,7 +64,7 @@ impl WallLocation {
                 orientation,
             })
         } else {
-            Err(format!("The square should be in the range 1..=71 and should not be divisible by 9, but was {square}"))
+            Err(format!("The square should be in the range 0..=70 and should not be divisible by 9, but was {square}"))
         }
     }
 
@@ -120,14 +75,14 @@ impl WallLocation {
                 notation.len()
             ));
         }
-        let coordinate = convert_to_coordinate(&notation[0..2])?;
+        let coordinate = convert_notation_to_coordinate(&notation[0..2])?;
         match notation.chars().nth(2) {
             Some('v' | 'V') => Ok(WallLocation {
-                square: convert_to_square(coordinate),
+                square: convert_coordinate_to_square(coordinate),
                 orientation: WallOrientation::Vertical,
             }),
             Some('h' | 'H') => Ok(WallLocation {
-                square: convert_to_square(coordinate),
+                square: convert_coordinate_to_square(coordinate),
                 orientation: WallOrientation::Horizontal,
             }),
             _ => Err(String::from(
@@ -146,24 +101,47 @@ impl WallLocation {
     }
 
     pub fn get_notation(&self) -> String {
-        convert_to_notation(self.get_coordinate(), Some(self.get_orientation()))
+        convert_location_to_notation(self.get_square(), Some(self.get_orientation()))
     }
 
     fn get_coordinate(&self) -> Coordinate {
-        Coordinate {
-            x: &self.square % 9,
-            y: &self.square / 9,
-        }
+        convert_square_to_coordinate(self.square)
     }
 }
 
-fn number_to_alphabet(number: u8) -> char {
-    ALPHABET[usize::from(number)]
+#[derive(Clone, Hash, Debug, PartialEq, Display)]
+pub enum WallOrientation {
+    Horizontal,
+    Vertical,
 }
 
-fn convert_to_notation(coordinate: Coordinate, orientation: Option<WallOrientation>) -> String {
-    assert!(coordinate.x < 9);
-    assert!(coordinate.y < 9);
+#[derive(Debug)]
+pub struct Coordinate {
+    pub x: u8,
+    pub y: u8,
+}
+
+#[derive(EnumIter, Debug, PartialEq)]
+pub enum Direction {
+    North,
+    East,
+    South,
+    West,
+}
+
+fn convert_coordinate_to_square(coordinate: Coordinate) -> u8 {
+    (coordinate.y) * 9 + coordinate.x
+}
+
+fn convert_square_to_coordinate(square: u8) -> Coordinate {
+    Coordinate {
+        x: square % 9,
+        y: square / 9,
+    }
+}
+
+fn convert_location_to_notation(square: u8, orientation: Option<WallOrientation>) -> String {
+    let coordinate = convert_square_to_coordinate(square);
 
     let mut notation = String::new();
     notation.push(number_to_alphabet(coordinate.x));
@@ -180,7 +158,11 @@ fn convert_to_notation(coordinate: Coordinate, orientation: Option<WallOrientati
     notation
 }
 
-fn convert_to_coordinate(notation: &str) -> Result<Coordinate, String> {
+fn number_to_alphabet(number: u8) -> char {
+    ALPHABET[usize::from(number)]
+}
+
+fn convert_notation_to_coordinate(notation: &str) -> Result<Coordinate, String> {
     if notation.len() != 2 {
         return Err(format!(
             "A pawn location notation needs to be 2 characters, but was {} characters",
@@ -212,10 +194,6 @@ fn convert_to_coordinate(notation: &str) -> Result<Coordinate, String> {
         ));
     }
     Err(format!("The first character of a notation needs to be a letter between A and I, but got {uppercase_first_char}"))
-}
-
-fn convert_to_square(coordinate: Coordinate) -> u8 {
-    (coordinate.y) * 9 + coordinate.x
 }
 
 #[cfg(test)]
@@ -262,49 +240,6 @@ mod tests {
         for input in inputs {
             PawnLocation::from_notation(input).unwrap();
         }
-    }
-
-    #[test]
-    fn new_pawn_location_from_direction_east_succesfull() {
-        let starting_location = PawnLocation::build(4).unwrap();
-        let result = starting_location.new_location_from_direction(Direction::East);
-        assert_eq!(result.unwrap().get_square(), 5)
-    }
-
-    #[test]
-    #[should_panic]
-    fn new_pawn_location_from_direction_north_failed() {
-        let starting_location = PawnLocation::build(76).unwrap();
-        let result = starting_location
-            .new_location_from_direction(Direction::North)
-            .unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn new_pawn_location_from_direction_east_failed() {
-        let starting_location = PawnLocation::build(8).unwrap();
-        let result = starting_location
-            .new_location_from_direction(Direction::East)
-            .unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn new_pawn_location_from_direction_south_failed() {
-        let starting_location = PawnLocation::build(4).unwrap();
-        let result = starting_location
-            .new_location_from_direction(Direction::South)
-            .unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn new_pawn_location_from_direction_west_failed() {
-        let starting_location = PawnLocation::build(45).unwrap();
-        let result = starting_location
-            .new_location_from_direction(Direction::West)
-            .unwrap();
     }
 
     #[test]
