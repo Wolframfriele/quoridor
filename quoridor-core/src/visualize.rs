@@ -1,9 +1,16 @@
+use crate::actions::Action;
 use crate::boardstate::Boardstate;
 use crate::locations::{Coordinate, PawnLocation};
 
+pub fn print_action(boardstate: &Boardstate, action: &Action) {
+    println!("   Play action: {}\n", action.get_notation());
+    print_board_state(boardstate);
+}
+
 pub fn print_board_state(boardstate: &Boardstate) {
+    println!("   Active player: {:?}", boardstate.get_active_player());
     for y in (0..=8u8).rev() {
-        let mut horizontal_walls = String::from("  |");
+        let mut horizontal_walls = String::from("   |");
         for x in 0..=8u8 {
             let location = PawnLocation::from_coordinate(Coordinate { x, y })
                 .expect("The x and y range are made to be small enough");
@@ -11,7 +18,7 @@ pub fn print_board_state(boardstate: &Boardstate) {
         }
         println!("{horizontal_walls}");
 
-        let mut vertical_walls_and_paws = format!("{} |", y + 1);
+        let mut vertical_walls_and_paws = format!(" {} |", y + 1);
         for x in 0..=8u8 {
             let location = PawnLocation::from_coordinate(Coordinate { x, y })
                 .expect("The x and y range are made to be small enough");
@@ -30,8 +37,10 @@ pub fn print_board_state(boardstate: &Boardstate) {
         }
         println!("{vertical_walls_and_paws}");
     }
-    println!("  |-----|-----|-----|-----|-----|-----|-----|-----|-----|");
-    println!("     A     B     C     D     E     F     G     H     I   \n\n");
+    println!("   |-----|-----|-----|-----|-----|-----|-----|-----|-----|");
+    println!("      A     B     C     D     E     F     G     H     I   \n");
+    println!("    white walls: {}                         black walls: {}", boardstate.get_available_walls_white_player(), boardstate.get_available_walls_black_player());
+    println!("  ________________________________________________________\n");
 }
 
 fn format_pawn(

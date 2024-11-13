@@ -3,7 +3,6 @@ use bitmaps::Bitmap;
 use crate::actions::{Action, PossibleActions};
 use crate::gamestate::{GameStatus, VictoryReason};
 use crate::locations::{Direction, PawnLocation, WallLocation, WallOrientation};
-use crate::visualize::print_board_state;
 
 #[derive(Clone, Hash, Debug)]
 /// The boardstate is responsible for keeping track of all the pawns and walls placed on the board.
@@ -21,8 +20,8 @@ pub struct Boardstate {
     white_available_walls: u8,
     black_available_walls: u8,
     wall_positions: [Option<WallOrientation>; 71],
-    horizontal_blocks: Bitmap::<72>,
-    vertical_blocks: Bitmap::<80>,
+    horizontal_blocks: Bitmap<72>,
+    vertical_blocks: Bitmap<80>,
 }
 
 impl Default for Boardstate {
@@ -118,7 +117,6 @@ impl Boardstate {
             if let Some(WallOrientation::Horizontal) =
                 self.wall_positions[usize::from(location.get_square())]
             {
-                //println!("{:?}, {}", coordinate, location.get_square());
                 current_square_wall = true;
             }
         }
@@ -128,7 +126,6 @@ impl Boardstate {
             if let Some(WallOrientation::Horizontal) =
                 self.wall_positions[usize::from(location.get_square() - 1)]
             {
-                //println!("{:?}, {} - 1", coordinate, location.get_square());
                 left_square_wall = true;
             }
         }
@@ -143,7 +140,6 @@ impl Boardstate {
             if let Some(WallOrientation::Vertical) =
                 self.wall_positions[usize::from(location.get_square())]
             {
-                //println!("{:?}, {}", coordinate, location.get_square());
                 current_square_wall = true;
             }
         }
@@ -153,7 +149,6 @@ impl Boardstate {
             if let Some(WallOrientation::Vertical) =
                 self.wall_positions[usize::from(location.get_square() - 9)]
             {
-                //println!("{:?}, {} - 9", coordinate, location.get_square());
                 lower_square_wall = true;
             }
         }
@@ -367,7 +362,7 @@ impl Boardstate {
                 }
                 if self
                     .horizontal_blocks
-                    .get((location.get_square() - 1).into())
+                    .get((location.get_square() - 9).into())
                 {
                     return Err(format!(
                         "Going West from square {0} is blocked by a wall",
