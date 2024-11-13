@@ -1,3 +1,11 @@
+pub trait Location {
+    fn get_square(&self) -> u8; 
+
+    fn get_coordinate(&self) -> Coordinate {
+        Coordinate::from_square(self.get_square())
+    }
+}
+
 /// The location of a pawn on the board, represented by the number of the square that the pawn
 /// occupies.
 #[derive(Clone, Hash, Debug, PartialEq)]
@@ -33,13 +41,11 @@ impl PawnLocation {
             ))
         }
     }
+}
 
-    pub fn get_square(&self) -> u8 {
+impl Location for PawnLocation {
+    fn get_square(&self) -> u8 {
         self.square
-    }
-
-    pub fn get_coordinate(&self) -> Coordinate {
-        Coordinate::from_square(self.square)
     }
 }
 
@@ -83,16 +89,14 @@ impl WallLocation {
         }
     }
 
-    pub fn get_square(&self) -> u8 {
-        self.square
-    }
-
     pub fn get_orientation(&self) -> WallOrientation {
         self.orientation.clone()
     }
+}
 
-    pub fn get_coordinate(&self) -> Coordinate {
-        Coordinate::from_square(self.square)
+impl Location for WallLocation {
+    fn get_square(&self) -> u8 {
+        self.square
     }
 }
 

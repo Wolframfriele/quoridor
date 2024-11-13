@@ -2,7 +2,7 @@ use bitmaps::Bitmap;
 
 use crate::actions::{Action, PossibleActions};
 use crate::gamestate::{GameStatus, VictoryReason};
-use crate::locations::{Direction, PawnLocation, WallLocation, WallOrientation};
+use crate::locations::{Direction, PawnLocation, WallLocation, WallOrientation, Location};
 
 #[derive(Clone, Hash, Debug)]
 /// The boardstate is responsible for keeping track of all the pawns and walls placed on the board.
@@ -109,7 +109,7 @@ impl Boardstate {
         }
     }
 
-    pub fn is_blocked_horizontal(&self, location: PawnLocation) -> bool {
+    pub fn is_blocked_horizontal(&self, location: &impl Location) -> bool {
         let coordinate = location.get_coordinate();
 
         let mut current_square_wall = false;
@@ -132,7 +132,7 @@ impl Boardstate {
         current_square_wall | left_square_wall
     }
 
-    pub fn is_blocked_vertical(&self, location: PawnLocation) -> bool {
+    pub fn is_blocked_vertical(&self, location: &impl Location) -> bool {
         let coordinate = location.get_coordinate();
 
         let mut current_square_wall = false;
