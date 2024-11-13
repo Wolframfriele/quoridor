@@ -1,4 +1,4 @@
-use fixedbitset::FixedBitSet;
+use bitmaps::Bitmap;
 
 use crate::actions::{Action, PossibleActions};
 use crate::gamestate::{GameStatus, VictoryReason};
@@ -21,8 +21,8 @@ pub struct Boardstate {
     white_available_walls: u8,
     black_available_walls: u8,
     wall_positions: [Option<WallOrientation>; 71],
-    horizontal_blocks: FixedBitSet,
-    vertical_blocks: FixedBitSet,
+    horizontal_blocks: Bitmap::<72>,
+    vertical_blocks: Bitmap::<80>,
 }
 
 impl Default for Boardstate {
@@ -36,8 +36,8 @@ impl Default for Boardstate {
             white_available_walls: 10,
             black_available_walls: 10,
             wall_positions: [const { None }; 71],
-            horizontal_blocks: FixedBitSet::with_capacity(72),
-            vertical_blocks: FixedBitSet::with_capacity(80),
+            horizontal_blocks: Bitmap::<72>::new(),
+            vertical_blocks: Bitmap::<80>::new(),
         }
     }
 }
@@ -179,10 +179,10 @@ impl Boardstate {
             WallOrientation::Horizontal => {
                 if self
                     .horizontal_blocks
-                    .contains(location.get_square().into())
+                    .get(location.get_square().into())
                     || self
                         .horizontal_blocks
-                        .contains((location.get_square() + 1).into())
+                        .get((location.get_square() + 1).into())
                 {
                     return Err(format!(
                         "Can't insert a {:?} wall at location {}. Because it would overlaps an existing wall",
@@ -205,10 +205,10 @@ impl Boardstate {
                 };
             }
             WallOrientation::Vertical => {
-                if self.vertical_blocks.contains(location.get_square().into())
+                if self.vertical_blocks.get(location.get_square().into())
                     || self
                         .vertical_blocks
-                        .contains((location.get_square() + 9).into())
+                        .get((location.get_square() + 9).into())
                 {
                     return Err(format!(
                         "Can't insert a {:?} wall at location {}. Because it would overlaps an existing wall",
@@ -334,7 +334,7 @@ impl Boardstate {
                 }
                 if self
                     .horizontal_blocks
-                    .contains(location.get_square().into())
+                    .get(location.get_square().into())
                 {
                     return Err(format!(
                         "Going North from square {} is blocked by a wall",
@@ -350,7 +350,7 @@ impl Boardstate {
                 if location.get_coordinate().x == 8 {
                     return Err(format!("Going East from square {0} is impossible since it is on the edge of the board", location.get_square()));
                 }
-                if self.vertical_blocks.contains(location.get_square().into()) {
+                if self.vertical_blocks.get(location.get_square().into()) {
                     return Err(format!(
                         "Going East from square {0} is blocked by a wall",
                         location.get_square()
@@ -367,7 +367,7 @@ impl Boardstate {
                 }
                 if self
                     .horizontal_blocks
-                    .contains((location.get_square() - 1).into())
+                    .get((location.get_square() - 1).into())
                 {
                     return Err(format!(
                         "Going West from square {0} is blocked by a wall",
@@ -385,7 +385,7 @@ impl Boardstate {
                 }
                 if self
                     .vertical_blocks
-                    .contains((location.get_square() - 1).into())
+                    .get((location.get_square() - 1).into())
                 {
                     return Err(format!(
                         "Going West from square {0} is blocked by a wall",

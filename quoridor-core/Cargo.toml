@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 
-fixedbitset = "0.5.7"
+bitmaps = "3.2.1"
 anyhow = "1.0.93"
