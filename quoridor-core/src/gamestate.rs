@@ -25,12 +25,14 @@ impl Gamestate {
     }
 }
 
+#[derive(Debug)]
 pub enum TimeControl {
     Timed { seconds: usize, increment: usize },
     Unlimited,
     Correspondence,
 }
 
+#[derive(Debug)]
 pub enum GameStatus {
     InProgress,
     Finished {
@@ -39,6 +41,7 @@ pub enum GameStatus {
     },
 }
 
+#[derive(Debug)]
 pub enum VictoryReason {
     ReachedOppositeSide,
     Resigned,

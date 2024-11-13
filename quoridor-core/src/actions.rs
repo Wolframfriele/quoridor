@@ -1,4 +1,4 @@
-use crate::locations::{PawnLocation, WallLocation, WallOrientation, Coordinate};
+use crate::locations::{Coordinate, PawnLocation, WallLocation, WallOrientation};
 
 const ALPHABET: [char; 9] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
@@ -21,14 +21,20 @@ impl Action {
         match notation.len() {
             2 => Ok(Action::Pawn(pawn_location_from_notation(notation)?)),
             3 => Ok(Action::Wall(wall_location_from_notation(notation)?)),
-            _ => Err(format!("An action notation should have 2 or 3 characters, got {}", notation.len())),
+            _ => Err(format!(
+                "An action notation should have 2 or 3 characters, got {}",
+                notation.len()
+            )),
         }
     }
 
     pub fn get_notation(&self) -> String {
         match self {
             Self::Pawn(pawn_location) => location_to_notation(pawn_location.get_coordinate(), None),
-            Self::Wall(wall_location) => location_to_notation(wall_location.get_coordinate(), Some(wall_location.get_orientation())),
+            Self::Wall(wall_location) => location_to_notation(
+                wall_location.get_coordinate(),
+                Some(wall_location.get_orientation()),
+            ),
         }
     }
 }
@@ -40,8 +46,14 @@ fn pawn_location_from_notation(notation: &str) -> Result<PawnLocation, String> {
 fn wall_location_from_notation(notation: &str) -> Result<WallLocation, String> {
     let coordinate = notation_to_coordinate(notation)?;
     match notation.chars().nth(2) {
-        Some('v' | 'V') => Ok(WallLocation::from_coordinate(coordinate, WallOrientation::Vertical)?),
-        Some('h' | 'H') => Ok(WallLocation::from_coordinate(coordinate, WallOrientation::Horizontal)?),
+        Some('v' | 'V') => Ok(WallLocation::from_coordinate(
+            coordinate,
+            WallOrientation::Vertical,
+        )?),
+        Some('h' | 'H') => Ok(WallLocation::from_coordinate(
+            coordinate,
+            WallOrientation::Horizontal,
+        )?),
         _ => Err(String::from(
             "The last character of the notation needs to be either a v or an h",
         )),
@@ -135,13 +147,34 @@ mod tests {
             ("H8", Action::Pawn(PawnLocation::build(70).unwrap())),
             ("i1", Action::Pawn(PawnLocation::build(8).unwrap())),
             ("I9", Action::Pawn(PawnLocation::build(80).unwrap())),
-            ("A1v", Action::Wall(WallLocation::build(0, WallOrientation::Vertical).unwrap())),
-            ("A8h", Action::Wall(WallLocation::build(63, WallOrientation::Horizontal).unwrap())),
-            ("B6v", Action::Wall(WallLocation::build(46, WallOrientation::Vertical).unwrap())),
-            ("E6h", Action::Wall(WallLocation::build(49, WallOrientation::Horizontal).unwrap())),
-            ("F8v", Action::Wall(WallLocation::build(68, WallOrientation::Vertical).unwrap())),
-            ("H1h", Action::Wall(WallLocation::build(7, WallOrientation::Horizontal).unwrap())),
-            ("H8v", Action::Wall(WallLocation::build(70, WallOrientation::Vertical).unwrap())),
+            (
+                "A1v",
+                Action::Wall(WallLocation::build(0, WallOrientation::Vertical).unwrap()),
+            ),
+            (
+                "A8h",
+                Action::Wall(WallLocation::build(63, WallOrientation::Horizontal).unwrap()),
+            ),
+            (
+                "B6v",
+                Action::Wall(WallLocation::build(46, WallOrientation::Vertical).unwrap()),
+            ),
+            (
+                "E6h",
+                Action::Wall(WallLocation::build(49, WallOrientation::Horizontal).unwrap()),
+            ),
+            (
+                "F8v",
+                Action::Wall(WallLocation::build(68, WallOrientation::Vertical).unwrap()),
+            ),
+            (
+                "H1h",
+                Action::Wall(WallLocation::build(7, WallOrientation::Horizontal).unwrap()),
+            ),
+            (
+                "H8v",
+                Action::Wall(WallLocation::build(70, WallOrientation::Vertical).unwrap()),
+            ),
         ];
         for (input, expected) in input_and_expected {
             assert_eq!(Action::from_notation(input).unwrap(), expected);

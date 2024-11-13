@@ -1,8 +1,9 @@
 use fixedbitset::FixedBitSet;
 
-use crate::gamestate::{GameStatus, VictoryReason};
-use crate::locations::{PawnLocation, WallLocation, WallOrientation, Direction};
 use crate::actions::{Action, PossibleActions};
+use crate::gamestate::{GameStatus, VictoryReason};
+use crate::locations::{Direction, PawnLocation, WallLocation, WallOrientation};
+use crate::visualize::print_board_state;
 
 #[derive(Clone, Hash, Debug)]
 /// The boardstate is responsible for keeping track of all the pawns and walls placed on the board.
@@ -102,16 +103,61 @@ impl Boardstate {
     /// boardstate is updated.
     /// A check is executed if the game is won. When the game is won an enum with the Won result is
     /// returned, otherwise the active player is swapped and an InProgress enum is returned
-    ///
-    /// At some point it is prabably nice to get an unchecked version of this method that returns a
-    /// new boardstate. When doing the MCTS simulations you will only use random moves from
-    /// get_legal_moves, there is no need to execute a bunch of the validation logic around played
-    /// actions. And that could save a lot of compute.
     pub fn apply_action(&mut self, action: Action) -> Result<GameStatus, String> {
         match action {
             Action::Pawn(pawn_location) => self.move_pawn_to_location(pawn_location),
             Action::Wall(wall_location) => self.insert_wall_at_location(wall_location),
         }
+    }
+
+    pub fn is_blocked_horizontal(&self, location: PawnLocation) -> bool {
+        let coordinate = location.get_coordinate();
+
+        let mut current_square_wall = false;
+        if coordinate.x < 8 && coordinate.y < 8 {
+            if let Some(WallOrientation::Horizontal) =
+                self.wall_positions[usize::from(location.get_square())]
+            {
+                //println!("{:?}, {}", coordinate, location.get_square());
+                current_square_wall = true;
+            }
+        }
+
+        let mut left_square_wall = false;
+        if coordinate.x > 0 && coordinate.y < 8 {
+            if let Some(WallOrientation::Horizontal) =
+                self.wall_positions[usize::from(location.get_square() - 1)]
+            {
+                //println!("{:?}, {} - 1", coordinate, location.get_square());
+                left_square_wall = true;
+            }
+        }
+        current_square_wall | left_square_wall
+    }
+
+    pub fn is_blocked_vertical(&self, location: PawnLocation) -> bool {
+        let coordinate = location.get_coordinate();
+
+        let mut current_square_wall = false;
+        if coordinate.x < 8 && coordinate.y < 8 {
+            if let Some(WallOrientation::Vertical) =
+                self.wall_positions[usize::from(location.get_square())]
+            {
+                //println!("{:?}, {}", coordinate, location.get_square());
+                current_square_wall = true;
+            }
+        }
+
+        let mut lower_square_wall = false;
+        if coordinate.x < 7 && coordinate.y > 0 {
+            if let Some(WallOrientation::Vertical) =
+                self.wall_positions[usize::from(location.get_square() - 9)]
+            {
+                //println!("{:?}, {} - 9", coordinate, location.get_square());
+                lower_square_wall = true;
+            }
+        }
+        current_square_wall | lower_square_wall
     }
 
     /// Attempts to insert a wall for the currently active player.
@@ -223,7 +269,10 @@ impl Boardstate {
                         // it seems sort of important to be able for normal undo behavior in the
                         // case of playing the computer?
                         self.active_player = Player::Black;
-                        return Ok(GameStatus::Finished{ won_by: Player::White, reason: VictoryReason::ReachedOppositeSide});
+                        return Ok(GameStatus::Finished {
+                            won_by: Player::White,
+                            reason: VictoryReason::ReachedOppositeSide,
+                        });
                     }
                     self.active_player = Player::Black;
                     return Ok(GameStatus::InProgress);
@@ -232,7 +281,10 @@ impl Boardstate {
                     self.black_position = location;
                     if self.state_is_won() {
                         self.active_player = Player::White;
-                        return Ok(GameStatus::Finished{ won_by: Player::Black , reason: VictoryReason::ReachedOppositeSide});
+                        return Ok(GameStatus::Finished {
+                            won_by: Player::Black,
+                            reason: VictoryReason::ReachedOppositeSide,
+                        });
                     }
                     self.active_player = Player::White;
                     return Ok(GameStatus::InProgress);
@@ -253,7 +305,12 @@ impl Boardstate {
         };
 
         let mut possible_pawn_moves: Vec<PawnLocation> = Vec::with_capacity(4);
-        for direction in [Direction::North, Direction::East, Direction::South, Direction::West] {
+        for direction in [
+            Direction::North,
+            Direction::East,
+            Direction::South,
+            Direction::West,
+        ] {
             if let Ok(new_location) = self.check_direction(current_location, &direction) {
                 possible_pawn_moves.push(new_location)
             }
@@ -365,65 +422,6 @@ impl Boardstate {
             Player::White => self.white_position.get_coordinate().y == 8,
             Player::Black => self.black_position.get_coordinate().y == 1,
         }
-    }
-
-    pub fn print_board_state(&self) {
-        for y in (0..=8u8).rev() {
-            let mut horizontal_walls = String::from("  |");
-            for x in 0..=8u8 {
-                let square = ((y) * 9) + x;
-                horizontal_walls.push_str(&self.format_horizontal_wall(square));
-            }
-            println!("{horizontal_walls}");
-
-            let mut vertical_walls_and_paws = format!("{} |", y + 1);
-            for x in 0..=8u8 {
-                let square = ((y) * 9) + x;
-                vertical_walls_and_paws.push_str(
-                    format!(
-                        "  {}  {}",
-                        self.format_pawn(square),
-                        self.format_vertical_wall(square)
-                    )
-                    .as_str(),
-                );
-            }
-            println!("{vertical_walls_and_paws}");
-        }
-        println!("  |-----|-----|-----|-----|-----|-----|-----|-----|-----|");
-        println!("     A     B     C     D     E     F     G     H     I   \n\n");
-    }
-
-    fn format_pawn(&self, square: u8) -> char {
-        if self.white_position.get_square() == square {
-            return 'O';
-        }
-        if self.black_position.get_square() == square {
-            return 'X';
-        }
-        ' '
-    }
-
-    fn format_horizontal_wall(&self, square: u8) -> String {
-        let mut horizontal_line = String::from("--");
-        if self.horizontal_blocks.contains(square.into()) {
-            horizontal_line.push('#')
-        } else {
-            horizontal_line.push('-')
-        }
-        if square < 70 && self.wall_positions[usize::from(square)].is_some() {
-            horizontal_line.push_str("--#");
-        } else {
-            horizontal_line.push_str("--|");
-        }
-        horizontal_line
-    }
-
-    fn format_vertical_wall(&self, square: u8) -> char {
-        if self.vertical_blocks.contains(square.into()) {
-            return '#';
-        }
-        '|'
     }
 }
 
