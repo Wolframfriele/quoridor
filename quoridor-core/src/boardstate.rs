@@ -198,6 +198,8 @@ impl Boardstate {
                         square
                     ));
                 }
+                self.wall_placed.set(square, true);
+                self.wall_orientation.set(square, true);
             }
             WallOrientation::Horizontal => {
                 if self.horizontal_wall_at_coordinate(&coordinate.from_direction(Direction::North))
@@ -208,6 +210,8 @@ impl Boardstate {
                         square
                     ));
                 }
+                self.wall_placed.set(square, true);
+                self.wall_orientation.set(square, false);
             }
         }
 
@@ -218,12 +222,12 @@ impl Boardstate {
     fn player_has_no_walls_available(&self) -> bool {
         match self.active_player {
             Player::White => {
-                if self.white_available_walls >= 1 {
+                if self.white_available_walls < 1 {
                     return true;
                 }
             }
             Player::Black => {
-                if self.black_available_walls >= 1 {
+                if self.black_available_walls < 1 {
                     return true;
                 }
             }
@@ -477,30 +481,16 @@ mod tests {
     //         .unwrap();
     // }
     //
-    // #[test]
-    // fn insert_wall_successfull() {
-    //     let mut boardstate = Boardstate::new();
-    //     boardstate
-    //         .insert_wall_at_location(WallLocation::build(41, WallOrientation::Horizontal).unwrap())
-    //         .unwrap();
-    //     boardstate
-    //         .insert_wall_at_location(WallLocation::build(0, WallOrientation::Vertical).unwrap())
-    //         .unwrap();
-    //     boardstate
-    //         .insert_wall_at_location(WallLocation::build(70, WallOrientation::Horizontal).unwrap())
-    //         .unwrap();
-    //
-    //     assert_eq!(
-    //         boardstate.get_wall_positions()[41],
-    //         Some(WallOrientation::Horizontal)
-    //     );
-    //     assert_eq!(
-    //         boardstate.get_wall_positions()[0],
-    //         Some(WallOrientation::Vertical)
-    //     );
-    //     assert_eq!(
-    //         boardstate.get_wall_positions()[70],
-    //         Some(WallOrientation::Horizontal)
-    //     );
-    // }
+    #[test]
+    fn insert_wall_successfull() {
+         let mut boardstate = Boardstate::new();
+         boardstate
+             .insert_wall_at_location(WallLocation::build(41, WallOrientation::Horizontal).unwrap())
+             .unwrap();
+    
+         assert_eq!(
+             boardstate.get_wall_positions()[41],
+             Some(WallOrientation::Horizontal)
+         );
+    }
 }
