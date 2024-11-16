@@ -1,4 +1,4 @@
-use crate::locations::{Coordinate, PawnLocation, WallLocation, WallOrientation, Location};
+use crate::locations::{Coordinate, Location, PawnLocation, WallLocation, WallOrientation};
 
 const ALPHABET: [char; 9] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 

@@ -1,9 +1,12 @@
 pub trait Location {
-    fn get_square(&self) -> u8; 
+    fn get_square(&self) -> u8;
 
     fn get_coordinate(&self) -> Coordinate {
         Coordinate::from_square(self.get_square())
     }
+
+    // Maybe it could be cool to implement the new location from direction here
+    // fn new_location_from_direction(&self, direction: Direction) -> impl Location;
 }
 
 /// The location of a pawn on the board, represented by the number of the square that the pawn
@@ -106,7 +109,7 @@ pub enum WallOrientation {
     Vertical,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Coordinate {
     pub x: u8,
     pub y: u8,
@@ -122,6 +125,55 @@ impl Coordinate {
 
     pub fn to_square(&self) -> u8 {
         (self.y) * 9 + self.x
+    }
+
+    pub fn from_direction(&self, direction: Direction) -> Option<Coordinate> {
+        match direction {
+            Direction::North => {
+                if self.y + 1 < 8 {
+                    return Some(Coordinate {
+                        x: self.x,
+                        y: self.y + 1,
+                    });
+                }
+            }
+            Direction::East => {
+                if self.x + 1 < 8 {
+                    return Some(Coordinate {
+                        x: self.x + 1,
+                        y: self.y,
+                    });
+                }
+            }
+            Direction::South => {
+                if self.y - 1 > 0 {
+                    return Some(Coordinate {
+                        x: self.x,
+                        y: self.y - 1,
+                    });
+                }
+            }
+            Direction::West => {
+                if self.x > 0 {
+                    return Some(Coordinate {
+                        x: self.x - 1,
+                        y: self.y,
+                    });
+                }
+            }
+        }
+        None
+    }
+
+    pub fn from_calculation(&self, x: i8, y: i8) -> Option<Coordinate> {
+        let new_x = self.x.checked_add_signed(x)?;
+        let new_y = self.y.checked_add_signed(y)?;
+
+        if (0..=8).contains(&new_x) && (0..=8).contains(&new_y) {
+            return Some(Coordinate { x: new_x, y: new_y });
+        }
+
+        None
     }
 }
 
