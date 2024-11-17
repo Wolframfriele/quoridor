@@ -44,6 +44,13 @@ impl PawnLocation {
             ))
         }
     }
+
+    pub fn from_direction(&self, direction: Direction) -> Result<Self, String> {
+        if let Some(new_coordinate) = self.get_coordinate().from_direction(direction) {
+            return PawnLocation::from_coordinate(new_coordinate);
+        }
+        Err(String::from("Can't create new location from direction"))
+    }
 }
 
 impl Location for PawnLocation {

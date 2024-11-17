@@ -17,7 +17,7 @@ const DIRECTIONS: [Direction; 4] = [
 /// The boardstate is responsible for keeping track of all the pawns and walls placed on the board.
 ///
 /// It is also the place that holds the basic game rules related logic, since it is the place that
-/// can check if move's keep the board in a legal state. This will require some implementation off
+/// can check if move's keep the board in a legal stat. This will require some implementation off
 /// a path finding algorithm, since so much off the game revolves around not blocking the path off
 /// for the pawns.
 ///
@@ -90,7 +90,7 @@ impl Boardstate {
 
     pub fn get_wall_positions(&self) -> [Option<WallOrientation>; 71] {
         let mut wall_arrray: [Option<WallOrientation>; 71] = [const { None }; 71];
-        for index in 0..71 {
+        for index in self.wall_placed.into_iter() {
             if self.wall_placed.get(index) {
                 if self.wall_orientation.get(index) {
                     wall_arrray[index] = Some(WallOrientation::Vertical);
@@ -126,47 +126,7 @@ impl Boardstate {
         }
     }
 
-    /// Check if moving in a direction is blocked from a location, true when either a wall or the
-    /// end of the board is blocking, false when the move is not blocking. 
-    pub fn is_blocked_in_direction(&self, location: &impl Location, direction: &Direction) -> bool {
-        let coordinate = location.get_coordinate();
-        match direction {
-            Direction::North => {
-                let wall_at_coordinate = self.horizontal_wall_at_coordinate(&Some(coordinate.clone()));
-                if coordinate.x > 1 {
-                    return wall_at_coordinate | self.horizontal_wall_at_coordinate(&coordinate.from_calculation(-1, 0));
-                }
-                wall_at_coordinate
-            }
-            Direction::East => {
-                let wall_at_coordinate = self.vertical_wall_at_coordinate(&Some(coordinate.clone()));
-                if coordinate.y > 1 {
-                    return wall_at_coordinate | self.vertical_wall_at_coordinate(&coordinate.from_calculation(0, -1));
-                }
-                wall_at_coordinate
-            }
-            Direction::South => {
-                if coordinate.y > 1 {
-                    let wall_below_coordinate = self.horizontal_wall_at_coordinate(&coordinate.from_calculation(0, -1));
-                    if coordinate.x > 1 {
-                        return wall_below_coordinate |self.horizontal_wall_at_coordinate(&coordinate.from_calculation(-1, -1));
-                    }
-                    return wall_below_coordinate;
-                }
-                true
-            }
-            Direction::West => {
-                if coordinate.x > 1 {
-                    let wall_left_of_coordinate = self.vertical_wall_at_coordinate(&coordinate.from_calculation(-1, 0));
-                    if coordinate.y > 1 {
-                        return wall_left_of_coordinate | self.vertical_wall_at_coordinate(&coordinate.from_calculation(-1, -1));
-                    }
-                    return wall_left_of_coordinate;
-                }
-                true 
-            }
-        }
-    }
+    
 
     /// Attempts to insert a wall for the currently active player.
     ///
@@ -238,9 +198,12 @@ impl Boardstate {
     fn horizontal_wall_at_coordinate(&self, coordinate: &Option<Coordinate>) -> bool {
         if let Some(coordinate) = coordinate {
             println!("Input coordinate: {:?}", coordinate);
-            let horizontal_wall =  self.wall_placed.get(coordinate.to_square().into())
+            let horizontal_wall = self.wall_placed.get(coordinate.to_square().into())
                 && !self.wall_orientation.get(coordinate.to_square().into());
-            println!("Horizontal_wall {} at coordinate: {:?}",horizontal_wall, coordinate);
+            println!(
+                "Horizontal_wall {} at coordinate: {:?}",
+                horizontal_wall, coordinate
+            );
             return horizontal_wall;
         }
         true
@@ -250,9 +213,11 @@ impl Boardstate {
         if let Some(coordinate) = coordinate {
             let horizontal_wall = self.wall_placed.get(coordinate.to_square().into())
                 && self.wall_orientation.get(coordinate.to_square().into());
-            println!("Vertical_wall {} at coordinate: {:?}",horizontal_wall, coordinate);
+            println!(
+                "Vertical_wall {} at coordinate: {:?}",
+                horizontal_wall, coordinate
+            );
             return horizontal_wall;
-
         }
         true
     }
@@ -271,7 +236,7 @@ impl Boardstate {
             match self.active_player {
                 Player::White => {
                     self.white_position = location;
-                    if self.state_is_won() {
+                    if self.is_won() {
                         // Need to figure out if I still need to switch the game state is won
                         // it seems sort of important to be able for normal undo behavior in the
                         // case of playing the computer?
@@ -286,7 +251,7 @@ impl Boardstate {
                 }
                 Player::Black => {
                     self.black_position = location;
-                    if self.state_is_won() {
+                    if self.is_won() {
                         self.active_player = Player::White;
                         return Ok(GameStatus::Finished {
                             won_by: Player::Black,
@@ -313,108 +278,82 @@ impl Boardstate {
 
         let mut possible_pawn_moves: Vec<PawnLocation> = Vec::with_capacity(4);
         for direction in DIRECTIONS {
-            if let Ok(new_location) = self.check_direction(current_location, &direction) {
-                possible_pawn_moves.push(new_location)
+            if !self.is_blocked_in_direction(current_location, &direction) {
+                let new_location = current_location.from_direction(direction).expect("Going off the board should be handled by the is_blocked_in_direction method");
+                if !self.is_occupied_by_other_player(&new_location) {
+                    possible_pawn_moves.push(new_location);
+                }
+                // Handle jump logic in case off other player on square
             }
         }
 
         possible_pawn_moves
     }
 
-    /// Check if moving in a direction is possible, either returns the new position or an error.
-    ///
-    /// At some point this should probably also handle the jump
-    fn check_direction(
+    /// Check if moving in a direction is blocked from a location, true when either a wall or the
+    /// end of the board is blocking, false when the move is not blocking.
+    pub fn is_blocked_in_direction(&self, location: &impl Location, direction: &Direction) -> bool {
+        let coordinate = location.get_coordinate();
+        match direction {
+            Direction::North => {
+                let wall_at_coordinate =
+                    self.horizontal_wall_at_coordinate(&Some(coordinate.clone()));
+                if coordinate.x > 1 {
+                    return wall_at_coordinate
+                        | self.horizontal_wall_at_coordinate(&coordinate.from_calculation(-1, 0));
+                }
+                wall_at_coordinate
+            }
+            Direction::East => {
+                let wall_at_coordinate =
+                    self.vertical_wall_at_coordinate(&Some(coordinate.clone()));
+                if coordinate.y > 1 {
+                    return wall_at_coordinate
+                        | self.vertical_wall_at_coordinate(&coordinate.from_calculation(0, -1));
+                }
+                wall_at_coordinate
+            }
+            Direction::South => {
+                if coordinate.y > 1 {
+                    let wall_below_coordinate =
+                        self.horizontal_wall_at_coordinate(&coordinate.from_calculation(0, -1));
+                    if coordinate.x > 1 {
+                        return wall_below_coordinate
+                            | self.horizontal_wall_at_coordinate(
+                                &coordinate.from_calculation(-1, -1),
+                            );
+                    }
+                    return wall_below_coordinate;
+                }
+                true
+            }
+            Direction::West => {
+                if coordinate.x > 1 {
+                    let wall_left_of_coordinate =
+                        self.vertical_wall_at_coordinate(&coordinate.from_calculation(-1, 0));
+                    if coordinate.y > 1 {
+                        return wall_left_of_coordinate
+                            | self
+                                .vertical_wall_at_coordinate(&coordinate.from_calculation(-1, -1));
+                    }
+                    return wall_left_of_coordinate;
+                }
+                true
+            }
+        }
+    }
+
+    fn is_occupied_by_other_player(
         &self,
         location: &PawnLocation,
-        direction: &Direction,
-    ) -> Result<PawnLocation, String> {
-        PawnLocation::build(6)
-        // match direction {
-        //     Direction::North => {
-        //         if location.get_coordinate().y == 8 {
-        //             return Err(format!("Going North from square {0} is impossible since it is on the edge of the board", location.get_square()));
-        //         }
-        //         if self.horizontal_blocks.get(location.get_square().into()) {
-        //             return Err(format!(
-        //                 "Going North from square {} is blocked by a wall",
-        //                 location.get_square()
-        //             ));
-        //         };
-        //
-        //         self.check_new_location_for_other_player(PawnLocation::build(
-        //             location.get_square() + 9,
-        //         )?)
-        //     }
-        //     Direction::East => {
-        //         if location.get_coordinate().x == 8 {
-        //             return Err(format!("Going East from square {0} is impossible since it is on the edge of the board", location.get_square()));
-        //         }
-        //         if self.vertical_blocks.get(location.get_square().into()) {
-        //             return Err(format!(
-        //                 "Going East from square {0} is blocked by a wall",
-        //                 location.get_square()
-        //             ));
-        //         }
-        //
-        //         self.check_new_location_for_other_player(PawnLocation::build(
-        //             location.get_square() + 1,
-        //         )?)
-        //     }
-        //     Direction::South => {
-        //         if location.get_coordinate().y == 0 {
-        //             return Err(format!("Going West from square {0} is impossible since it is on the edge of the board", location.get_square()));
-        //         }
-        //         if self
-        //             .horizontal_blocks
-        //             .get((location.get_square() - 9).into())
-        //         {
-        //             return Err(format!(
-        //                 "Going West from square {0} is blocked by a wall",
-        //                 location.get_square()
-        //             ));
-        //         }
-        //
-        //         self.check_new_location_for_other_player(PawnLocation::build(
-        //             location.get_square() - 9,
-        //         )?)
-        //     }
-        //     Direction::West => {
-        //         if location.get_coordinate().x == 0 {
-        //             return Err(format!("Going West from square {0} is impossible since it is on the edge of the board", location.get_square()));
-        //         }
-        //         if self.vertical_blocks.get((location.get_square() - 1).into()) {
-        //             return Err(format!(
-        //                 "Going West from square {0} is blocked by a wall",
-        //                 location.get_square()
-        //             ));
-        //         }
-        //
-        //         self.check_new_location_for_other_player(PawnLocation::build(
-        //             location.get_square() - 1,
-        //         )?)
-        //     }
-        // }
-    }
-
-    fn check_new_location_for_other_player(
-        &self,
-        location: PawnLocation,
-    ) -> Result<PawnLocation, String> {
-        let occupied = match self.active_player {
+    ) -> bool {
+        match self.active_player {
             Player::White => location.get_square() == self.black_position.get_square(),
             Player::Black => location.get_square() == self.white_position.get_square(),
-        };
-        if occupied {
-            return Err(format!(
-                "Going to square {} is blocked by the other player",
-                location.get_square()
-            ));
         }
-        Ok(location)
     }
 
-    fn state_is_won(&self) -> bool {
+    fn is_won(&self) -> bool {
         match self.active_player {
             Player::White => self.white_position.get_coordinate().y == 8,
             Player::Black => self.black_position.get_coordinate().y == 1,
@@ -483,14 +422,14 @@ mod tests {
     //
     #[test]
     fn insert_wall_successfull() {
-         let mut boardstate = Boardstate::new();
-         boardstate
-             .insert_wall_at_location(WallLocation::build(41, WallOrientation::Horizontal).unwrap())
-             .unwrap();
-    
-         assert_eq!(
-             boardstate.get_wall_positions()[41],
-             Some(WallOrientation::Horizontal)
-         );
+        let mut boardstate = Boardstate::new();
+        boardstate
+            .insert_wall_at_location(WallLocation::build(41, WallOrientation::Horizontal).unwrap())
+            .unwrap();
+
+        assert_eq!(
+            boardstate.get_wall_positions()[41],
+            Some(WallOrientation::Horizontal)
+        );
     }
 }
