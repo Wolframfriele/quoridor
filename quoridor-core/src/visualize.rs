@@ -81,7 +81,7 @@ fn format_horizontal_wall(boardstate: &Boardstate, location: PawnLocation) -> St
 // TODO Make use off wall orientations instead off the wall blocks
 fn format_vertical_wall(boardstate: &Boardstate, location: PawnLocation) -> char {
     if boardstate.is_blocked_in_direction(&location, &Direction::East) {
-    return '#';
+        return '#';
     }
     '|'
 }
