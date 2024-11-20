@@ -1,6 +1,6 @@
 use crate::actions::Action;
 use crate::boardstate::Boardstate;
-use crate::locations::{Coordinate, Direction, Location, PawnLocation};
+use crate::locations::{Coordinate, Location, PawnLocation};
 
 pub fn print_action(boardstate: &Boardstate, action: &Action) {
     println!("   Play action: {}\n", action.get_notation());
@@ -64,7 +64,7 @@ fn format_pawn(
 // TODO Make use off wall orientations instead off the wall blocks
 fn format_horizontal_wall(boardstate: &Boardstate, location: PawnLocation) -> String {
     let mut horizontal_line = String::from("--");
-    if boardstate.is_blocked_in_direction(&location, &Direction::North) {
+    if boardstate.horizontal_wall_at_coordinate(&location.get_coordinate()) {
         horizontal_line.push('#')
     } else {
         horizontal_line.push('-')
@@ -80,7 +80,7 @@ fn format_horizontal_wall(boardstate: &Boardstate, location: PawnLocation) -> St
 
 // TODO Make use off wall orientations instead off the wall blocks
 fn format_vertical_wall(boardstate: &Boardstate, location: PawnLocation) -> char {
-    if boardstate.is_blocked_in_direction(&location, &Direction::East) {
+    if boardstate.vertical_wall_at_coordinate(&location.get_coordinate()) {
         return '#';
     }
     '|'

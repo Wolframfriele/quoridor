@@ -68,7 +68,7 @@ impl Boardstate {
         boardstate.black_position = black;
         if let Some(player) = active_player {
             boardstate.active_player = player;
-        } 
+        }
 
         Ok(boardstate)
     }
@@ -141,58 +141,37 @@ impl Boardstate {
         if self.player_has_no_walls_available() {
             return Err(String::from("No more walls left make a pawn move instead"));
         }
-        // check if a wall exists on the wall coordinate or if the wall would overlap with an
-        // existing wall
+
         let square = usize::from(location.get_square());
-        if self.wall_placed.get(square) {
+        let coordinate = location.get_coordinate();
+
+        if self.wall_at_coordinate(&coordinate).is_some() {
             return Err(format!(
                 "Can't insert wall, location {} already occupied",
                 square
             ));
         }
 
-        let coordinate = location.get_coordinate();
-
         match location.get_orientation() {
             WallOrientation::Vertical => {
-                let wall_at_coordinate =
-                    self.vertical_wall_at_coordinate(&Some(coordinate.clone()));
-                if coordinate.y > 0
-                    && (wall_at_coordinate
-                        | self.vertical_wall_at_coordinate(&coordinate.from_calculation(0, -1)))
-                {
+                if self.vertical_wall_at_coordinate(&coordinate) {
                     return Err(format!(
                         "Can't insert wall, location {} overlaps with existing wall",
                         square
                     ));
                 }
-                if coordinate.y == 0 && wall_at_coordinate {
-                    return Err(format!(
-                        "Can't insert wall, location {} overlaps with existing wall",
-                        square
-                    ));
-                }
+
                 self.wall_orientation.set(square, true);
             }
 
             WallOrientation::Horizontal => {
-                let wall_at_coordinate =
-                    self.horizontal_wall_at_coordinate(&Some(coordinate.clone()));
-                if coordinate.x > 0
-                    && (wall_at_coordinate
-                        | self.horizontal_wall_at_coordinate(&coordinate.from_calculation(-1, 0)))
-                {
+                if self.horizontal_wall_at_coordinate(&coordinate) {
                     return Err(format!(
                         "Can't insert wall, location {} overlaps with existing wall",
                         square
                     ));
                 }
-                if coordinate.x == 0 && wall_at_coordinate {
-                    return Err(format!(
-                        "Can't insert wall, location {} overlaps with existing wall",
-                        square
-                    ));
-                }
+
                 self.wall_orientation.set(square, false);
             }
         }
@@ -219,31 +198,55 @@ impl Boardstate {
         false
     }
 
-    fn horizontal_wall_at_coordinate(&self, coordinate: &Option<Coordinate>) -> bool {
-        if let Some(coordinate) = coordinate {
-            println!("Input coordinate: {:?}", coordinate);
-            let horizontal_wall = self.wall_placed.get(coordinate.to_square().into())
-                && !self.wall_orientation.get(coordinate.to_square().into());
-            println!(
-                "Horizontal_wall {} at coordinate: {:?}",
-                horizontal_wall, coordinate
-            );
-            return horizontal_wall;
+    pub fn wall_at_coordinate(&self, coordinate: &Coordinate) -> Option<WallOrientation> {
+        if (0..8u8).contains(&coordinate.x)
+            && (0..7u8).contains(&coordinate.y)
+            && self.wall_placed.get(coordinate.to_square().into())
+        {
+            return match self.wall_orientation.get(coordinate.to_square().into()) {
+                false => Some(WallOrientation::Horizontal),
+                true => Some(WallOrientation::Vertical),
+            };
         }
-        true
+        None
     }
 
-    fn vertical_wall_at_coordinate(&self, coordinate: &Option<Coordinate>) -> bool {
-        if let Some(coordinate) = coordinate {
-            let horizontal_wall = self.wall_placed.get(coordinate.to_square().into())
-                && self.wall_orientation.get(coordinate.to_square().into());
-            println!(
-                "Vertical_wall {} at coordinate: {:?}",
-                horizontal_wall, coordinate
-            );
-            return horizontal_wall;
+    pub fn horizontal_wall_at_coordinate(&self, coordinate: &Coordinate) -> bool {
+        let mut wall_option_1 = false;
+        if (0..8u8).contains(&coordinate.x) && (0..7u8).contains(&coordinate.y) {
+            wall_option_1 = self.wall_placed.get(coordinate.to_square().into())
+                && !self.wall_orientation.get(coordinate.to_square().into());
         }
-        true
+
+        let mut wall_option_2 = false;
+        let second_coordinate = coordinate.from_calculation(-1, 0);
+        if let Some(second_coordinate) = second_coordinate {
+            if (0..8u8).contains(&second_coordinate.x) && (0..7u8).contains(&second_coordinate.y) {
+                wall_option_2 = self.wall_placed.get(second_coordinate.to_square().into())
+                    && !self.wall_orientation.get(second_coordinate.to_square().into());
+            }
+        }
+
+        wall_option_1 | wall_option_2
+    }
+
+    pub fn vertical_wall_at_coordinate(&self, coordinate: &Coordinate) -> bool {
+        let mut wall_option_1 = false;
+        if (0..7u8).contains(&coordinate.x) && (0..8u8).contains(&coordinate.y) {
+            wall_option_1 = self.wall_placed.get(coordinate.to_square().into())
+                && self.wall_orientation.get(coordinate.to_square().into());
+        }
+
+        let mut wall_option_2 = false;
+        let second_coordinate = coordinate.from_calculation(0, -1);
+        if let Some(second_coordinate) = second_coordinate {
+            if (0..7u8).contains(&second_coordinate.x) && (0..8u8).contains(&second_coordinate.y) {
+                wall_option_2 = self.wall_placed.get(second_coordinate.to_square().into())
+                    && self.wall_orientation.get(second_coordinate.to_square().into());
+            }
+        }
+
+        wall_option_1 | wall_option_2
     }
 
     fn decrease_available_walls(&mut self) {
@@ -262,8 +265,6 @@ impl Boardstate {
 
     fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<GameStatus, String> {
         let possible_pawn_moves = self.get_possible_pawn_moves();
-
-        println!("{:?}", possible_pawn_moves);
         if possible_pawn_moves.contains(&location) {
             match self.active_player {
                 Player::White => {
@@ -318,8 +319,6 @@ impl Boardstate {
                     possible_pawn_moves.push(new_location);
                 }
                 // Handle jump logic in case off other player on square
-            } else {
-                println!("Blocked in direction: {:?}", &direction);
             }
         }
 
@@ -328,51 +327,30 @@ impl Boardstate {
 
     /// Check if moving in a direction is blocked from a location, true when either a wall or the
     /// end of the board is blocking, false when the move is not blocking.
-    pub fn is_blocked_in_direction(&self, location: &impl Location, direction: &Direction) -> bool {
+    fn is_blocked_in_direction(&self, location: &impl Location, direction: &Direction) -> bool {
         let coordinate = location.get_coordinate();
         match direction {
             Direction::North => {
-                let wall_at_coordinate =
-                    self.horizontal_wall_at_coordinate(&Some(coordinate.clone()));
-                if coordinate.x > 1 {
-                    return wall_at_coordinate
-                        | self.horizontal_wall_at_coordinate(&coordinate.from_calculation(-1, 0));
+                if coordinate.y < 8 {
+                    return self.horizontal_wall_at_coordinate(&coordinate);
                 }
-                wall_at_coordinate
+                true
             }
             Direction::East => {
-                let wall_at_coordinate =
-                    self.vertical_wall_at_coordinate(&Some(coordinate.clone()));
-                if coordinate.y > 1 {
-                    return wall_at_coordinate
-                        | self.vertical_wall_at_coordinate(&coordinate.from_calculation(0, -1));
+                if coordinate.x < 8 {
+                    return self.vertical_wall_at_coordinate(&coordinate);
                 }
-                wall_at_coordinate
+                true
             }
             Direction::South => {
-                if coordinate.y > 0 {
-                    let wall_below_coordinate =
-                        self.horizontal_wall_at_coordinate(&coordinate.from_calculation(0, -1));
-                    if coordinate.x > 1 {
-                        return wall_below_coordinate
-                            | self.horizontal_wall_at_coordinate(
-                                &coordinate.from_calculation(-1, -1),
-                            );
-                    }
-                    return wall_below_coordinate;
+                if let Some(coordinate_below_current) = coordinate.from_calculation(0, -1) {
+                    return self.horizontal_wall_at_coordinate(&coordinate_below_current);
                 }
                 true
             }
             Direction::West => {
-                if coordinate.x > 1 {
-                    let wall_left_of_coordinate =
-                        self.vertical_wall_at_coordinate(&coordinate.from_calculation(-1, 0));
-                    if coordinate.y > 1 {
-                        return wall_left_of_coordinate
-                            | self
-                                .vertical_wall_at_coordinate(&coordinate.from_calculation(-1, -1));
-                    }
-                    return wall_left_of_coordinate;
+                if let Some(coordinate_left_of_current) = coordinate.from_calculation(-1, 0) {
+                    return self.vertical_wall_at_coordinate(&coordinate_left_of_current);
                 }
                 true
             }
@@ -458,7 +436,6 @@ mod tests {
             (Direction::West, false),
         ];
         for (direction, expected) in parameters {
-            println!("Direction: {:?}", direction);
             let result =
                 boardstate.is_blocked_in_direction(&PawnLocation::build(4).unwrap(), &direction);
             assert_eq!(result, expected);
@@ -484,7 +461,6 @@ mod tests {
             (Direction::West, false),
         ];
         for (direction, expected) in parameters {
-            println!("Direction: {:?}", direction);
             let result =
                 boardstate.is_blocked_in_direction(&PawnLocation::build(22).unwrap(), &direction);
             assert_eq!(result, expected);
