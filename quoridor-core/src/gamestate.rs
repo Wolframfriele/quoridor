@@ -32,7 +32,7 @@ pub enum TimeControl {
     Correspondence,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum GameStatus {
     InProgress,
     Finished {
@@ -41,7 +41,7 @@ pub enum GameStatus {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum VictoryReason {
     ReachedOppositeSide,
     Resigned,

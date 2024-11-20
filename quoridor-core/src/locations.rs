@@ -137,7 +137,7 @@ impl Coordinate {
     pub fn from_direction(&self, direction: Direction) -> Option<Coordinate> {
         match direction {
             Direction::North => {
-                if self.y + 1 < 8 {
+                if self.y < 8 {
                     return Some(Coordinate {
                         x: self.x,
                         y: self.y + 1,
@@ -145,7 +145,7 @@ impl Coordinate {
                 }
             }
             Direction::East => {
-                if self.x + 1 < 8 {
+                if self.x < 8 {
                     return Some(Coordinate {
                         x: self.x + 1,
                         y: self.y,
@@ -153,7 +153,7 @@ impl Coordinate {
                 }
             }
             Direction::South => {
-                if self.y - 1 > 0 {
+                if self.y > 0 {
                     return Some(Coordinate {
                         x: self.x,
                         y: self.y - 1,
