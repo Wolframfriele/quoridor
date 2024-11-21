@@ -1,10 +1,12 @@
+use anyhow::Result;
+
 use quoridor_core::actions::Action;
 use quoridor_core::boardstate::Boardstate;
 //use quoridor_core::gamestate::GameStatus;
 use quoridor_core::locations::{PawnLocation, WallLocation, WallOrientation};
 use quoridor_core::visualize::{print_action, print_board_state};
 
-fn main() -> Result<(), String> {
+fn main() -> Result<()> {
     let mut boardstate = Boardstate::new();
     let _ = boardstate.apply_action(Action::Wall(
         WallLocation::build(4, WallOrientation::Vertical).unwrap(),

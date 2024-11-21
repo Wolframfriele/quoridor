@@ -1,3 +1,5 @@
+use anyhow::{bail, ensure, Result};
+
 pub trait Location {
     fn get_square(&self) -> u8;
 
@@ -22,34 +24,32 @@ impl PawnLocation {
     /// square 10 etc.
     ///
     /// The square number must be between 1 and 81, or else an error will be returned.
-    pub fn build(square: u8) -> Result<Self, String> {
-        if (0..=80).contains(&square) {
-            Ok(PawnLocation { square })
-        } else {
-            Err(format!(
-                "The square should be in range 0..=80, but was: {square}"
-            ))
-        }
+    pub fn build(square: u8) -> Result<Self> {
+        ensure!(
+            (0..=80).contains(&square),
+            format!("The square should be in range 0..=80, but was: {square}")
+        );
+        Ok(PawnLocation { square })
     }
 
-    pub fn from_coordinate(coordinate: Coordinate) -> Result<Self, String> {
-        if coordinate.x < 9 && coordinate.y < 9 {
-            Ok(PawnLocation {
-                square: coordinate.to_square(),
-            })
-        } else {
-            Err(format!(
+    pub fn from_coordinate(coordinate: Coordinate) -> Result<Self> {
+        ensure!(
+            coordinate.x < 9 && coordinate.y < 9,
+            format!(
                 "The coordinate x and y should be in the range 0..=8, but where x: {} y: {}",
                 coordinate.x, coordinate.y
-            ))
-        }
+            )
+        );
+        Ok(PawnLocation {
+            square: coordinate.to_square(),
+        })
     }
 
-    pub fn from_direction(&self, direction: Direction) -> Result<Self, String> {
+    pub fn from_direction(&self, direction: Direction) -> Result<Self> {
         if let Some(new_coordinate) = self.get_coordinate().from_direction(direction) {
             return PawnLocation::from_coordinate(new_coordinate);
         }
-        Err(String::from("Can't create new location from direction"))
+        bail!("Can't create new location from direction")
     }
 }
 
@@ -71,32 +71,31 @@ impl WallLocation {
     /// Create a new WallCoordinate. There are 64 unique positions that a wall can be placed in,
     /// but the node value can be between 1 and 71. This is because the coordinate of the squares
     /// is
-    pub fn build(square: u8, orientation: WallOrientation) -> Result<Self, String> {
-        if (0..=70).contains(&square) && &square % 9 != 8 {
-            Ok(WallLocation {
-                square,
-                orientation,
-            })
-        } else {
-            Err(format!("The square should be in the range 0..=70 and should not be divisible by 9, but was {square}"))
-        }
+    pub fn build(square: u8, orientation: WallOrientation) -> Result<Self> {
+        ensure!(
+            (0..=70).contains(&square) && &square % 9 != 8, 
+            format!(
+                "The square should be in the range 0..=70 and should not be divisible by 9, but was {}", 
+                square
+            ));
+        Ok(WallLocation {
+            square,
+            orientation,
+        })
     }
 
-    pub fn from_coordinate(
-        coordinate: Coordinate,
-        orientation: WallOrientation,
-    ) -> Result<Self, String> {
-        if coordinate.x < 8 && coordinate.y < 8 {
-            Ok(WallLocation {
-                square: coordinate.to_square(),
-                orientation,
-            })
-        } else {
-            Err(format!(
+    pub fn from_coordinate(coordinate: Coordinate, orientation: WallOrientation) -> Result<Self> {
+        ensure!(
+            coordinate.x < 8 && coordinate.y < 8,
+            format!(
                 "The coordinate x and y should be in the range 0..=7, but where x: {} y: {}",
                 coordinate.x, coordinate.y
-            ))
-        }
+            )
+        );
+        Ok(WallLocation {
+            square: coordinate.to_square(),
+            orientation,
+        })
     }
 
     pub fn get_orientation(&self) -> WallOrientation {

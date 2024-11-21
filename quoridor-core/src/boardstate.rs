@@ -1,5 +1,5 @@
+use anyhow::{bail, ensure, Result};
 use bitmaps::Bitmap;
-// use anyhow::Result;
 
 use crate::actions::{Action, PossibleActions};
 use crate::gamestate::{GameStatus, VictoryReason};
@@ -59,7 +59,7 @@ impl Boardstate {
         black: PawnLocation,
         walls: Vec<WallLocation>,
         active_player: Option<Player>,
-    ) -> Result<Boardstate, String> {
+    ) -> Result<Boardstate> {
         let mut boardstate = Boardstate::new();
         for wall_location in walls {
             boardstate.insert_wall_at_location(wall_location)?;
@@ -124,7 +124,7 @@ impl Boardstate {
     /// boardstate is updated.
     /// A check is executed if the game is won. When the game is won an enum with the Won result is
     /// returned, otherwise the active player is swapped and an InProgress enum is returned
-    pub fn apply_action(&mut self, action: Action) -> Result<GameStatus, String> {
+    pub fn apply_action(&mut self, action: Action) -> Result<GameStatus> {
         match action {
             Action::Pawn(pawn_location) => self.move_pawn_to_location(pawn_location),
             Action::Wall(wall_location) => self.insert_wall_at_location(wall_location),
@@ -137,40 +137,41 @@ impl Boardstate {
     /// and if the wall doesn't completly block of the opponent from reaching the other side.
     ///
     /// At a successfull insert the active player is swapped.
-    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<GameStatus, String> {
-        if self.player_has_no_walls_available() {
-            return Err(String::from("No more walls left make a pawn move instead"));
-        }
+    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<GameStatus> {
+        ensure!(
+            self.player_has_walls_available(),
+            "No more walls left make a pawn move instead"
+        );
 
         let square = usize::from(location.get_square());
         let coordinate = location.get_coordinate();
 
-        if self.wall_at_coordinate(&coordinate).is_some() {
-            return Err(format!(
-                "Can't insert wall, location {} already occupied",
-                square
-            ));
-        }
+        ensure!(
+            self.wall_at_coordinate(&coordinate).is_none(),
+            format!("Can't insert wall, location {} already occupied", square)
+        );
 
         match location.get_orientation() {
             WallOrientation::Vertical => {
-                if self.vertical_wall_at_coordinate(&coordinate) {
-                    return Err(format!(
+                ensure!(
+                    !self.vertical_wall_at_coordinate(&coordinate),
+                    format!(
                         "Can't insert wall, location {} overlaps with existing wall",
                         square
-                    ));
-                }
+                    )
+                );
 
                 self.wall_orientation.set(square, true);
             }
 
             WallOrientation::Horizontal => {
-                if self.horizontal_wall_at_coordinate(&coordinate) {
-                    return Err(format!(
+                ensure!(
+                    !self.horizontal_wall_at_coordinate(&coordinate),
+                    format!(
                         "Can't insert wall, location {} overlaps with existing wall",
                         square
-                    ));
-                }
+                    )
+                );
 
                 self.wall_orientation.set(square, false);
             }
@@ -182,15 +183,15 @@ impl Boardstate {
         Ok(GameStatus::InProgress)
     }
 
-    fn player_has_no_walls_available(&self) -> bool {
+    fn player_has_walls_available(&self) -> bool {
         match self.active_player {
             Player::White => {
-                if self.white_available_walls < 1 {
+                if self.white_available_walls > 0 {
                     return true;
                 }
             }
             Player::Black => {
-                if self.black_available_walls < 1 {
+                if self.black_available_walls > 0 {
                     return true;
                 }
             }
@@ -223,7 +224,9 @@ impl Boardstate {
         if let Some(second_coordinate) = second_coordinate {
             if (0..8u8).contains(&second_coordinate.x) && (0..7u8).contains(&second_coordinate.y) {
                 wall_option_2 = self.wall_placed.get(second_coordinate.to_square().into())
-                    && !self.wall_orientation.get(second_coordinate.to_square().into());
+                    && !self
+                        .wall_orientation
+                        .get(second_coordinate.to_square().into());
             }
         }
 
@@ -242,7 +245,9 @@ impl Boardstate {
         if let Some(second_coordinate) = second_coordinate {
             if (0..7u8).contains(&second_coordinate.x) && (0..8u8).contains(&second_coordinate.y) {
                 wall_option_2 = self.wall_placed.get(second_coordinate.to_square().into())
-                    && self.wall_orientation.get(second_coordinate.to_square().into());
+                    && self
+                        .wall_orientation
+                        .get(second_coordinate.to_square().into());
             }
         }
 
@@ -263,7 +268,7 @@ impl Boardstate {
         }
     }
 
-    fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<GameStatus, String> {
+    fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<GameStatus> {
         let possible_pawn_moves = self.get_possible_pawn_moves();
         if possible_pawn_moves.contains(&location) {
             match self.active_player {
@@ -296,8 +301,7 @@ impl Boardstate {
                 }
             }
         }
-
-        Err(format!(
+        bail!(format!(
             "The move to square {} is not legal.",
             location.get_square()
         ))

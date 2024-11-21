@@ -1,3 +1,5 @@
+use anyhow::{bail, Result};
+
 use crate::locations::{Coordinate, Location, PawnLocation, WallLocation, WallOrientation};
 
 const ALPHABET: [char; 9] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
@@ -17,11 +19,11 @@ impl Action {
         Action::Wall(wall_location)
     }
 
-    pub fn from_notation(notation: &str) -> Result<Self, String> {
+    pub fn from_notation(notation: &str) -> Result<Self> {
         match notation.len() {
             2 => Ok(Action::Pawn(pawn_location_from_notation(notation)?)),
             3 => Ok(Action::Wall(wall_location_from_notation(notation)?)),
-            _ => Err(format!(
+            _ => bail!(format!(
                 "An action notation should have 2 or 3 characters, got {}",
                 notation.len()
             )),
@@ -39,11 +41,11 @@ impl Action {
     }
 }
 
-fn pawn_location_from_notation(notation: &str) -> Result<PawnLocation, String> {
+fn pawn_location_from_notation(notation: &str) -> Result<PawnLocation> {
     PawnLocation::from_coordinate(notation_to_coordinate(notation)?)
 }
 
-fn wall_location_from_notation(notation: &str) -> Result<WallLocation, String> {
+fn wall_location_from_notation(notation: &str) -> Result<WallLocation> {
     let coordinate = notation_to_coordinate(notation)?;
     match notation.chars().nth(2) {
         Some('v' | 'V') => Ok(WallLocation::from_coordinate(
@@ -54,7 +56,7 @@ fn wall_location_from_notation(notation: &str) -> Result<WallLocation, String> {
             coordinate,
             WallOrientation::Horizontal,
         )?),
-        _ => Err(String::from(
+        _ => bail!(String::from(
             "The last character of the notation needs to be either a v or an h",
         )),
     }
@@ -64,7 +66,7 @@ fn number_to_alphabet(number: u8) -> char {
     ALPHABET[usize::from(number)]
 }
 
-fn notation_to_coordinate(notation: &str) -> Result<Coordinate, String> {
+fn notation_to_coordinate(notation: &str) -> Result<Coordinate> {
     let uppercase_first_char = notation
         .to_ascii_uppercase()
         .chars()
@@ -83,13 +85,13 @@ fn notation_to_coordinate(notation: &str) -> Result<Coordinate, String> {
                     y: (y - 1).try_into().unwrap(),
                 });
             }
-            return Err(String::from("The second character can not be 0"));
+            bail!(String::from("The second character can not be 0"));
         }
-        return Err(format!(
+        bail!(format!(
             "The second character needs to be a number between 1 and 9, but got {second_char}"
         ));
     }
-    Err(format!("The first character of a notation needs to be a letter between A and I, but got {uppercase_first_char}"))
+    bail!(format!("The first character of a notation needs to be a letter between A and I, but got {uppercase_first_char}"))
 }
 
 fn location_to_notation(coordinate: Coordinate, orientation: Option<WallOrientation>) -> String {
