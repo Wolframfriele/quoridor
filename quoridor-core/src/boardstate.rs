@@ -269,42 +269,28 @@ impl Boardstate {
     }
 
     fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<GameStatus> {
-        let possible_pawn_moves = self.get_possible_pawn_moves();
-        if possible_pawn_moves.contains(&location) {
-            match self.active_player {
-                Player::White => {
-                    self.white_position = location;
-                    if self.is_won() {
-                        // Need to figure out if I still need to switch the game state is won
-                        // it seems sort of important to be able for normal undo behavior in the
-                        // case of playing the computer?
-                        self.active_player = Player::Black;
-                        return Ok(GameStatus::Finished {
-                            won_by: Player::White,
-                            reason: VictoryReason::ReachedOppositeSide,
-                        });
-                    }
-                    self.active_player = Player::Black;
-                    return Ok(GameStatus::InProgress);
-                }
-                Player::Black => {
-                    self.black_position = location;
-                    if self.is_won() {
-                        self.active_player = Player::White;
-                        return Ok(GameStatus::Finished {
-                            won_by: Player::Black,
-                            reason: VictoryReason::ReachedOppositeSide,
-                        });
-                    }
-                    self.active_player = Player::White;
-                    return Ok(GameStatus::InProgress);
-                }
+        ensure!(
+            self.get_possible_pawn_moves().contains(&location),
+            format!("The move to square {} is not legal.", location.get_square())
+        );
+        match self.active_player {
+            Player::White => {
+                self.white_position = location;
+            }
+            Player::Black => {
+                self.black_position = location;
             }
         }
-        bail!(format!(
-            "The move to square {} is not legal.",
-            location.get_square()
-        ))
+
+        if self.is_won() {
+            return Ok(GameStatus::Finished {
+                won_by: self.get_active_player().clone(),
+                reason: VictoryReason::ReachedOppositeSide,
+            });
+        }
+
+        self.swap_active_player();
+        Ok(GameStatus::InProgress)
     }
 
     fn get_possible_pawn_moves(&self) -> Vec<PawnLocation> {
@@ -316,18 +302,52 @@ impl Boardstate {
         let mut possible_pawn_moves: Vec<PawnLocation> = Vec::with_capacity(4);
         for direction in DIRECTIONS {
             if !self.is_blocked_in_direction(current_location, &direction) {
-                let new_location = current_location.from_direction(direction).expect(
+                let new_location = current_location.from_direction(&direction).expect(
                     "Going off the board should be handled by the is_blocked_in_direction method",
                 );
-                if !self.is_occupied_by_other_player(&new_location) {
+
+                if self.not_occupied_by_other_player(&new_location) {
                     possible_pawn_moves.push(new_location);
+                } else {
+                    possible_pawn_moves
+                        .append(&mut self.get_possible_jump_moves(&direction, &new_location));
                 }
-                // Handle jump logic in case off other player on square
             }
         }
 
         possible_pawn_moves
     }
+
+    fn get_possible_jump_moves(
+        &self,
+        direction: &Direction,
+        occupied_location: &PawnLocation,
+    ) -> Vec<PawnLocation> {
+        // check if new location is blocked in direction
+        // if not blocked return the new location from going in the direction from the new location
+        // if blocked check the two other directions (for when going North is blocked, check East
+        // and West)
+        // add the directions that are possible
+
+        let mut possible_jump_moves: Vec<PawnLocation> = Vec::with_capacity(3);
+
+        if !self.is_blocked_in_direction(occupied_location, direction) {
+            possible_jump_moves.push(occupied_location.from_direction(direction).expect(
+                "Going off the board should be handled by the is_blocked_in_direction method",
+            ));
+        } else {
+            for perpendicular_direction in direction.get_perpendicular_directions() {
+                if !self.is_blocked_in_direction(occupied_location, &perpendicular_direction) {
+                    possible_jump_moves.push(occupied_location.from_direction(&perpendicular_direction).expect(
+                        "Going off the board should be handled by the is_blocked_in_direction method",
+                    ));
+                }
+            }
+        }
+        possible_jump_moves
+    }
+
+    // TODO Write tests for the jump logic
 
     /// Check if moving in a direction is blocked from a location, true when either a wall or the
     /// end of the board is blocking, false when the move is not blocking.
@@ -361,10 +381,10 @@ impl Boardstate {
         }
     }
 
-    fn is_occupied_by_other_player(&self, location: &PawnLocation) -> bool {
+    fn not_occupied_by_other_player(&self, location: &PawnLocation) -> bool {
         match self.active_player {
-            Player::White => location.get_square() == self.black_position.get_square(),
-            Player::Black => location.get_square() == self.white_position.get_square(),
+            Player::White => location.get_square() != self.black_position.get_square(),
+            Player::Black => location.get_square() != self.white_position.get_square(),
         }
     }
 
@@ -386,7 +406,7 @@ pub enum Player {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn start_from_position() {
         let white_position = PawnLocation::build(0).unwrap();

@@ -45,7 +45,7 @@ impl PawnLocation {
         })
     }
 
-    pub fn from_direction(&self, direction: Direction) -> Result<Self> {
+    pub fn from_direction(&self, direction: &Direction) -> Result<Self> {
         if let Some(new_coordinate) = self.get_coordinate().from_direction(direction) {
             return PawnLocation::from_coordinate(new_coordinate);
         }
@@ -73,7 +73,7 @@ impl WallLocation {
     /// is
     pub fn build(square: u8, orientation: WallOrientation) -> Result<Self> {
         ensure!(
-            (0..=70).contains(&square) && &square % 9 != 8, 
+            (0..=70).contains(&square) && &square % 9 != 8,
             format!(
                 "The square should be in the range 0..=70 and should not be divisible by 9, but was {}", 
                 square
@@ -133,7 +133,7 @@ impl Coordinate {
         (self.y) * 9 + self.x
     }
 
-    pub fn from_direction(&self, direction: Direction) -> Option<Coordinate> {
+    pub fn from_direction(&self, direction: &Direction) -> Option<Coordinate> {
         match direction {
             Direction::North => {
                 if self.y < 8 {
@@ -189,6 +189,17 @@ pub enum Direction {
     East,
     South,
     West,
+}
+
+impl Direction {
+    pub fn get_perpendicular_directions(&self) -> [Direction; 2] {
+        match self {
+            Self::North => [Self::East, Self::West],
+            Self::East => [Self::North, Self::South],
+            Self::South => [Self::East, Self::West],
+            Self::West => [Self::North, Self::South],
+        }
+    }
 }
 
 #[cfg(test)]
