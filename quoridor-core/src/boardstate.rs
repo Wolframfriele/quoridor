@@ -1,4 +1,4 @@
-use anyhow::{bail, ensure, Result};
+use anyhow::{ensure, Result};
 use bitmaps::Bitmap;
 
 use crate::actions::{Action, PossibleActions};
@@ -107,98 +107,6 @@ impl Boardstate {
         wall_arrray
     }
 
-    /// Method to get all the legal moves for the currently active player in the
-    /// current boadstate.
-    ///
-    /// For the pawn moves this means checking all the move directions and the weird
-    /// rules around hoping over other players (need to figure out clean way to do that)
-    /// for the wall moves it needs to check all the open wall positions, see what direction would
-    /// be available (not blocked by existing wall) and check if it doesn't block all paths to the
-    /// opposite side for either player.
-    pub fn get_legal_actions(&self) -> PossibleActions {
-        PossibleActions::build(self.get_possible_pawn_moves(), Vec::new())
-    }
-
-    /// The play action takes an action as input and attempts to play that move on the current
-    /// board, if the action is illegal an error is returned. When the action is legal, the
-    /// boardstate is updated.
-    /// A check is executed if the game is won. When the game is won an enum with the Won result is
-    /// returned, otherwise the active player is swapped and an InProgress enum is returned
-    pub fn apply_action(&mut self, action: Action) -> Result<GameStatus> {
-        match action {
-            Action::Pawn(pawn_location) => self.move_pawn_to_location(pawn_location),
-            Action::Wall(wall_location) => self.insert_wall_at_location(wall_location),
-        }
-    }
-
-    /// Attempts to insert a wall for the currently active player.
-    ///
-    /// Checks if the player has walls available, if the location is not blocked by another wall
-    /// and if the wall doesn't completly block of the opponent from reaching the other side.
-    ///
-    /// At a successfull insert the active player is swapped.
-    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<GameStatus> {
-        ensure!(
-            self.player_has_walls_available(),
-            "No more walls left make a pawn move instead"
-        );
-
-        let square = usize::from(location.get_square());
-        let coordinate = location.get_coordinate();
-
-        ensure!(
-            self.wall_at_coordinate(&coordinate).is_none(),
-            format!("Can't insert wall, location {} already occupied", square)
-        );
-
-        match location.get_orientation() {
-            WallOrientation::Vertical => {
-                ensure!(
-                    !self.vertical_wall_at_coordinate(&coordinate),
-                    format!(
-                        "Can't insert wall, location {} overlaps with existing wall",
-                        square
-                    )
-                );
-
-                self.wall_orientation.set(square, true);
-            }
-
-            WallOrientation::Horizontal => {
-                ensure!(
-                    !self.horizontal_wall_at_coordinate(&coordinate),
-                    format!(
-                        "Can't insert wall, location {} overlaps with existing wall",
-                        square
-                    )
-                );
-
-                self.wall_orientation.set(square, false);
-            }
-        }
-
-        self.wall_placed.set(square, true);
-        self.decrease_available_walls();
-        self.swap_active_player();
-        Ok(GameStatus::InProgress)
-    }
-
-    fn player_has_walls_available(&self) -> bool {
-        match self.active_player {
-            Player::White => {
-                if self.white_available_walls > 0 {
-                    return true;
-                }
-            }
-            Player::Black => {
-                if self.black_available_walls > 0 {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
     pub fn wall_at_coordinate(&self, coordinate: &Coordinate) -> Option<WallOrientation> {
         if (0..8u8).contains(&coordinate.x)
             && (0..7u8).contains(&coordinate.y)
@@ -254,17 +162,27 @@ impl Boardstate {
         wall_option_1 | wall_option_2
     }
 
-    fn decrease_available_walls(&mut self) {
-        match self.active_player {
-            Player::White => self.white_available_walls -= 1,
-            Player::Black => self.black_available_walls -= 1,
-        }
+    /// Method to get all the legal moves for the currently active player in the
+    /// current boadstate.
+    ///
+    /// For the pawn moves this means checking all the move directions and the weird
+    /// rules around hoping over other players (need to figure out clean way to do that)
+    /// for the wall moves it needs to check all the open wall positions, see what direction would
+    /// be available (not blocked by existing wall) and check if it doesn't block all paths to the
+    /// opposite side for either player.
+    pub fn get_legal_actions(&self) -> PossibleActions {
+        PossibleActions::build(self.get_possible_pawn_moves(), Vec::new())
     }
 
-    fn swap_active_player(&mut self) {
-        self.active_player = match self.active_player {
-            Player::White => Player::Black,
-            Player::Black => Player::White,
+    /// The play action takes an action as input and attempts to play that move on the current
+    /// board, if the action is illegal an error is returned. When the action is legal, the
+    /// boardstate is updated.
+    /// A check is executed if the game is won. When the game is won an enum with the Won result is
+    /// returned, otherwise the active player is swapped and an InProgress enum is returned
+    pub fn apply_action(&mut self, action: Action) -> Result<GameStatus> {
+        match action {
+            Action::Pawn(pawn_location) => self.move_pawn_to_location(pawn_location),
+            Action::Wall(wall_location) => self.insert_wall_at_location(wall_location),
         }
     }
 
@@ -392,6 +310,88 @@ impl Boardstate {
         match self.active_player {
             Player::White => self.white_position.get_coordinate().y == 8,
             Player::Black => self.black_position.get_coordinate().y == 0,
+        }
+    }
+
+    fn swap_active_player(&mut self) {
+        self.active_player = match self.active_player {
+            Player::White => Player::Black,
+            Player::Black => Player::White,
+        }
+    }
+
+    /// Attempts to insert a wall for the currently active player.
+    ///
+    /// Checks if the player has walls available, if the location is not blocked by another wall
+    /// and if the wall doesn't completly block of the opponent from reaching the other side.
+    ///
+    /// At a successfull insert the active player is swapped.
+    fn insert_wall_at_location(&mut self, location: WallLocation) -> Result<GameStatus> {
+        ensure!(
+            self.player_has_walls_available(),
+            "No more walls left make a pawn move instead"
+        );
+
+        let square = usize::from(location.get_square());
+        let coordinate = location.get_coordinate();
+
+        ensure!(
+            self.wall_at_coordinate(&coordinate).is_none(),
+            format!("Can't insert wall, location {} already occupied", square)
+        );
+
+        match location.get_orientation() {
+            WallOrientation::Vertical => {
+                ensure!(
+                    !self.vertical_wall_at_coordinate(&coordinate),
+                    format!(
+                        "Can't insert wall, location {} overlaps with existing wall",
+                        square
+                    )
+                );
+
+                self.wall_orientation.set(square, true);
+            }
+
+            WallOrientation::Horizontal => {
+                ensure!(
+                    !self.horizontal_wall_at_coordinate(&coordinate),
+                    format!(
+                        "Can't insert wall, location {} overlaps with existing wall",
+                        square
+                    )
+                );
+
+                self.wall_orientation.set(square, false);
+            }
+        }
+
+        self.wall_placed.set(square, true);
+        self.decrease_available_walls();
+        self.swap_active_player();
+        Ok(GameStatus::InProgress)
+    }
+
+    fn player_has_walls_available(&self) -> bool {
+        match self.active_player {
+            Player::White => {
+                if self.white_available_walls > 0 {
+                    return true;
+                }
+            }
+            Player::Black => {
+                if self.black_available_walls > 0 {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    fn decrease_available_walls(&mut self) {
+        match self.active_player {
+            Player::White => self.white_available_walls -= 1,
+            Player::Black => self.black_available_walls -= 1,
         }
     }
 }
