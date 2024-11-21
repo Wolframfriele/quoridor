@@ -386,7 +386,7 @@ pub enum Player {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    
     #[test]
     fn start_from_position() {
         let white_position = PawnLocation::build(0).unwrap();
@@ -447,7 +447,7 @@ mod tests {
     }
 
     #[test]
-    fn is_blocked_in_direction_wall() {
+    fn is_blocked_in_direction_wall_north_and_east() {
         let boardstate = Boardstate::start_from(
             PawnLocation::build(22).unwrap(),
             PawnLocation::build(67).unwrap(),
@@ -463,6 +463,31 @@ mod tests {
             (Direction::East, true),
             (Direction::South, false),
             (Direction::West, false),
+        ];
+        for (direction, expected) in parameters {
+            let result =
+                boardstate.is_blocked_in_direction(&PawnLocation::build(22).unwrap(), &direction);
+            assert_eq!(result, expected);
+        }
+    }
+
+    #[test]
+    fn is_blocked_in_direction_wall_south_and_west() {
+        let boardstate = Boardstate::start_from(
+            PawnLocation::build(22).unwrap(),
+            PawnLocation::build(67).unwrap(),
+            vec![
+                WallLocation::build(13, WallOrientation::Horizontal).unwrap(),
+                WallLocation::build(12, WallOrientation::Vertical).unwrap(),
+            ],
+            None,
+        )
+        .unwrap();
+        let parameters = [
+            (Direction::North, false),
+            (Direction::East, false),
+            (Direction::South, true),
+            (Direction::West, true),
         ];
         for (direction, expected) in parameters {
             let result =
@@ -516,7 +541,6 @@ mod tests {
         )
     }
 
-    // TODO figure out why test fails
     #[test]
     fn black_move_to_bottom_row_should_win() {
         let mut boardstate = Boardstate::start_from(
@@ -561,13 +585,25 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn insert_wall_failed() {
+    fn insert_wall_failed_same_location() {
         let mut boardstate = Boardstate::new();
         boardstate
             .insert_wall_at_location(WallLocation::build(41, WallOrientation::Horizontal).unwrap())
             .unwrap();
         boardstate
             .insert_wall_at_location(WallLocation::build(41, WallOrientation::Vertical).unwrap())
+            .unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn insert_wall_failed_overlap() {
+        let mut boardstate = Boardstate::new();
+        boardstate
+            .insert_wall_at_location(WallLocation::build(41, WallOrientation::Horizontal).unwrap())
+            .unwrap();
+        boardstate
+            .insert_wall_at_location(WallLocation::build(42, WallOrientation::Horizontal).unwrap())
             .unwrap();
     }
 }
