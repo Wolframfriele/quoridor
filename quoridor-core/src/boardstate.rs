@@ -265,8 +265,6 @@ impl Boardstate {
         possible_jump_moves
     }
 
-    // TODO Write tests for the jump logic
-
     /// Check if moving in a direction is blocked from a location, true when either a wall or the
     /// end of the board is blocking, false when the move is not blocking.
     fn is_blocked_in_direction(&self, location: &impl Location, direction: &Direction) -> bool {
@@ -588,6 +586,49 @@ mod tests {
         boardstate
             .move_pawn_to_location(PawnLocation::build(40).unwrap())
             .unwrap();
+    }
+
+    #[test]
+    fn pawn_jump_over_other_player() {
+        let boardstate = Boardstate::start_from(
+            PawnLocation::build(40).unwrap(),
+            PawnLocation::build(49).unwrap(),
+            Vec::new(), 
+            None,
+        ).unwrap();
+        let possible_moves = boardstate.get_possible_pawn_moves();
+        assert!(possible_moves.contains(&PawnLocation::build(58).unwrap()));
+    }
+
+    #[test]
+    fn pawn_jump_over_other_player_wall_behind() {
+        let boardstate = Boardstate::start_from(
+            PawnLocation::build(40).unwrap(),
+            PawnLocation::build(49).unwrap(),
+            vec![
+                WallLocation::build(49, WallOrientation::Horizontal).unwrap(),
+            ], 
+            None,
+        ).unwrap();
+        let possible_moves = boardstate.get_possible_pawn_moves();
+        assert!(possible_moves.contains(&PawnLocation::build(48).unwrap()));
+        assert!(possible_moves.contains(&PawnLocation::build(50).unwrap()));
+    }
+
+    #[test]
+    fn pawn_jump_over_other_player_wall_behind_and_side() {
+        let boardstate = Boardstate::start_from(
+            PawnLocation::build(40).unwrap(),
+            PawnLocation::build(49).unwrap(),
+            vec![
+                WallLocation::build(49, WallOrientation::Horizontal).unwrap(),
+                WallLocation::build(48, WallOrientation::Vertical).unwrap(),
+            ], 
+            None,
+        ).unwrap();
+        let possible_moves = boardstate.get_possible_pawn_moves();
+        assert!(!possible_moves.contains(&PawnLocation::build(48).unwrap()));
+        assert!(possible_moves.contains(&PawnLocation::build(50).unwrap()));
     }
 
     #[test]
