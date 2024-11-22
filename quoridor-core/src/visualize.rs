@@ -48,8 +48,8 @@ pub fn print_board_state(boardstate: &Boardstate) {
 }
 
 fn format_pawn(
-    white_pawn_position: &PawnLocation,
-    black_pawn_position: &PawnLocation,
+    white_pawn_position: PawnLocation,
+    black_pawn_position: PawnLocation,
     square: u8,
 ) -> char {
     if white_pawn_position.get_square() == square {
@@ -64,7 +64,7 @@ fn format_pawn(
 // TODO Make use off wall orientations instead off the wall blocks
 fn format_horizontal_wall(boardstate: &Boardstate, location: PawnLocation) -> String {
     let mut horizontal_line = String::from("--");
-    if boardstate.horizontal_wall_at_coordinate(&location.get_coordinate()) {
+    if boardstate.horizontal_wall_at_coordinate(location.get_coordinate()) {
         horizontal_line.push('#')
     } else {
         horizontal_line.push('-')
@@ -80,7 +80,7 @@ fn format_horizontal_wall(boardstate: &Boardstate, location: PawnLocation) -> St
 
 // TODO Make use off wall orientations instead off the wall blocks
 fn format_vertical_wall(boardstate: &Boardstate, location: PawnLocation) -> char {
-    if boardstate.vertical_wall_at_coordinate(&location.get_coordinate()) {
+    if boardstate.vertical_wall_at_coordinate(location.get_coordinate()) {
         return '#';
     }
     '|'

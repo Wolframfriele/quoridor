@@ -75,24 +75,24 @@ impl Boardstate {
         Ok(boardstate)
     }
 
-    pub fn get_active_player(&self) -> &Player {
-        &self.active_player
+    pub fn get_active_player(&self) -> Player {
+        self.active_player
     }
 
-    pub fn get_position_white_pawn(&self) -> &PawnLocation {
-        &self.white_position
+    pub fn get_position_white_pawn(&self) -> PawnLocation {
+        self.white_position
     }
 
-    pub fn get_position_black_pawn(&self) -> &PawnLocation {
-        &self.black_position
+    pub fn get_position_black_pawn(&self) -> PawnLocation {
+        self.black_position
     }
 
-    pub fn get_available_walls_white_player(&self) -> &u8 {
-        &self.white_available_walls
+    pub fn get_available_walls_white_player(&self) -> u8 {
+        self.white_available_walls
     }
 
-    pub fn get_available_walls_black_player(&self) -> &u8 {
-        &self.black_available_walls
+    pub fn get_available_walls_black_player(&self) -> u8 {
+        self.black_available_walls
     }
 
     pub fn get_wall_positions(&self) -> [Option<WallOrientation>; 71] {
@@ -109,7 +109,7 @@ impl Boardstate {
         wall_arrray
     }
 
-    pub fn wall_at_coordinate(&self, coordinate: &Coordinate) -> Option<WallOrientation> {
+    pub fn wall_at_coordinate(&self, coordinate: Coordinate) -> Option<WallOrientation> {
         if (0..8u8).contains(&coordinate.x)
             && (0..7u8).contains(&coordinate.y)
             && self.wall_placed.get(coordinate.to_square().into())
@@ -122,7 +122,7 @@ impl Boardstate {
         None
     }
 
-    pub fn horizontal_wall_at_coordinate(&self, coordinate: &Coordinate) -> bool {
+    pub fn horizontal_wall_at_coordinate(&self, coordinate: Coordinate) -> bool {
         let mut wall_option_1 = false;
         if (0..8u8).contains(&coordinate.x) && (0..7u8).contains(&coordinate.y) {
             wall_option_1 = self.wall_placed.get(coordinate.to_square().into())
@@ -143,7 +143,7 @@ impl Boardstate {
         wall_option_1 | wall_option_2
     }
 
-    pub fn vertical_wall_at_coordinate(&self, coordinate: &Coordinate) -> bool {
+    pub fn vertical_wall_at_coordinate(&self, coordinate: Coordinate) -> bool {
         let mut wall_option_1 = false;
         if (0..7u8).contains(&coordinate.x) && (0..8u8).contains(&coordinate.y) {
             wall_option_1 = self.wall_placed.get(coordinate.to_square().into())
@@ -204,7 +204,7 @@ impl Boardstate {
 
         if self.is_won() {
             return Ok(GameStatus::Finished {
-                won_by: self.get_active_player().clone(),
+                won_by: self.get_active_player(),
                 reason: VictoryReason::ReachedOppositeSide,
             });
         }
@@ -215,22 +215,22 @@ impl Boardstate {
 
     fn get_possible_pawn_moves(&self) -> Vec<PawnLocation> {
         let current_location = match self.active_player {
-            Player::White => &self.white_position,
-            Player::Black => &self.black_position,
+            Player::White => self.white_position,
+            Player::Black => self.black_position,
         };
 
         let mut possible_pawn_moves: Vec<PawnLocation> = Vec::with_capacity(4);
         for direction in DIRECTIONS {
-            if !self.is_blocked_in_direction(current_location, &direction) {
-                let new_location = current_location.from_direction(&direction).expect(
+            if !self.is_blocked_in_direction(current_location, direction) {
+                let new_location = current_location.from_direction(direction).expect(
                     "Going off the board should be handled by the is_blocked_in_direction method",
                 );
 
-                if self.not_occupied_by_other_player(&new_location) {
+                if self.not_occupied_by_other_player(new_location) {
                     possible_pawn_moves.push(new_location);
                 } else {
                     possible_pawn_moves
-                        .append(&mut self.get_possible_jump_moves(&direction, &new_location));
+                        .append(&mut self.get_possible_jump_moves(direction, new_location));
                 }
             }
         }
@@ -240,8 +240,8 @@ impl Boardstate {
 
     fn get_possible_jump_moves(
         &self,
-        direction: &Direction,
-        occupied_location: &PawnLocation,
+        direction: Direction,
+        occupied_location: PawnLocation,
     ) -> Vec<PawnLocation> {
         let mut possible_jump_moves: Vec<PawnLocation> = Vec::with_capacity(3);
 
@@ -251,8 +251,8 @@ impl Boardstate {
             ));
         } else {
             for perpendicular_direction in direction.get_perpendicular_directions() {
-                if !self.is_blocked_in_direction(occupied_location, &perpendicular_direction) {
-                    possible_jump_moves.push(occupied_location.from_direction(&perpendicular_direction).expect(
+                if !self.is_blocked_in_direction(occupied_location, perpendicular_direction) {
+                    possible_jump_moves.push(occupied_location.from_direction(perpendicular_direction).expect(
                         "Going off the board should be handled by the is_blocked_in_direction method",
                     ));
                 }
@@ -263,37 +263,37 @@ impl Boardstate {
 
     /// Check if moving in a direction is blocked from a location, true when either a wall or the
     /// end of the board is blocking, false when the move is not blocking.
-    fn is_blocked_in_direction(&self, location: &impl Location, direction: &Direction) -> bool {
+    fn is_blocked_in_direction(&self, location: impl Location, direction: Direction) -> bool {
         let coordinate = location.get_coordinate();
         match direction {
             Direction::North => {
                 if coordinate.y < 8 {
-                    return self.horizontal_wall_at_coordinate(&coordinate);
+                    return self.horizontal_wall_at_coordinate(coordinate);
                 }
                 true
             }
             Direction::East => {
                 if coordinate.x < 8 {
-                    return self.vertical_wall_at_coordinate(&coordinate);
+                    return self.vertical_wall_at_coordinate(coordinate);
                 }
                 true
             }
             Direction::South => {
                 if let Some(coordinate_below_current) = coordinate.from_calculation(0, -1) {
-                    return self.horizontal_wall_at_coordinate(&coordinate_below_current);
+                    return self.horizontal_wall_at_coordinate(coordinate_below_current);
                 }
                 true
             }
             Direction::West => {
                 if let Some(coordinate_left_of_current) = coordinate.from_calculation(-1, 0) {
-                    return self.vertical_wall_at_coordinate(&coordinate_left_of_current);
+                    return self.vertical_wall_at_coordinate(coordinate_left_of_current);
                 }
                 true
             }
         }
     }
 
-    fn not_occupied_by_other_player(&self, location: &PawnLocation) -> bool {
+    fn not_occupied_by_other_player(&self, location: PawnLocation) -> bool {
         match self.active_player {
             Player::White => location.get_square() != self.black_position.get_square(),
             Player::Black => location.get_square() != self.white_position.get_square(),
@@ -330,14 +330,14 @@ impl Boardstate {
         let coordinate = location.get_coordinate();
 
         ensure!(
-            self.wall_at_coordinate(&coordinate).is_none(),
+            self.wall_at_coordinate(coordinate).is_none(),
             format!("Can't insert wall, location {} already occupied", square)
         );
 
         match location.get_orientation() {
             WallOrientation::Vertical => {
                 ensure!(
-                    !self.vertical_wall_at_coordinate(&coordinate),
+                    !self.vertical_wall_at_coordinate(coordinate),
                     format!(
                         "Can't insert wall, location {} overlaps with existing wall",
                         square
@@ -349,7 +349,7 @@ impl Boardstate {
 
             WallOrientation::Horizontal => {
                 ensure!(
-                    !self.horizontal_wall_at_coordinate(&coordinate),
+                    !self.horizontal_wall_at_coordinate(coordinate),
                     format!(
                         "Can't insert wall, location {} overlaps with existing wall",
                         square
@@ -403,8 +403,8 @@ impl Boardstate {
         };
 
         // capacity can problably be smaller
-        let to_explore: VecDeque<PawnLocation> = VecDeque::with_capacity(81);
-        let seen: HashSet<PawnLocation> = HashSet::new();
+        let mut to_explore: VecDeque<PawnLocation> = VecDeque::with_capacity(81);
+        let mut seen: HashSet<PawnLocation> = HashSet::new();
 
         to_explore.push_back(start);
 
@@ -421,7 +421,7 @@ impl Boardstate {
     }
 }
 
-#[derive(Clone, Hash, Debug, PartialEq)]
+#[derive(Copy, Clone, Hash, Debug, PartialEq)]
 /// An enum with the two player options
 pub enum Player {
     White,
@@ -437,8 +437,8 @@ mod tests {
         let white_position = PawnLocation::build(0).unwrap();
         let black_position = PawnLocation::build(80).unwrap();
         let boardstate = Boardstate::start_from(
-            white_position.clone(),
-            black_position.clone(),
+            white_position,
+            black_position,
             vec![
                 WallLocation::build(0, WallOrientation::Vertical).unwrap(),
                 WallLocation::build(70, WallOrientation::Vertical).unwrap(),
@@ -452,12 +452,12 @@ mod tests {
         expected_wall_positions[0] = Some(WallOrientation::Vertical);
         expected_wall_positions[70] = Some(WallOrientation::Vertical);
         expected_wall_positions[40] = Some(WallOrientation::Horizontal);
-        assert_eq!(boardstate.get_position_white_pawn(), &white_position);
-        assert_eq!(boardstate.get_position_black_pawn(), &black_position);
+        assert_eq!(boardstate.get_position_white_pawn(), white_position);
+        assert_eq!(boardstate.get_position_black_pawn(), black_position);
         assert_eq!(boardstate.get_wall_positions(), expected_wall_positions);
-        assert_eq!(boardstate.get_available_walls_white_player(), &8u8);
-        assert_eq!(boardstate.get_available_walls_black_player(), &9u8);
-        assert_eq!(boardstate.get_active_player(), &Player::Black);
+        assert_eq!(boardstate.get_available_walls_white_player(), 8u8);
+        assert_eq!(boardstate.get_available_walls_black_player(), 9u8);
+        assert_eq!(boardstate.get_active_player(), Player::Black);
     }
 
     #[test]
@@ -486,7 +486,7 @@ mod tests {
         ];
         for (direction, expected) in parameters {
             let result =
-                boardstate.is_blocked_in_direction(&PawnLocation::build(4).unwrap(), &direction);
+                boardstate.is_blocked_in_direction(PawnLocation::build(4).unwrap(), direction);
             assert_eq!(result, expected);
         }
     }
@@ -511,7 +511,7 @@ mod tests {
         ];
         for (direction, expected) in parameters {
             let result =
-                boardstate.is_blocked_in_direction(&PawnLocation::build(22).unwrap(), &direction);
+                boardstate.is_blocked_in_direction(PawnLocation::build(22).unwrap(), direction);
             assert_eq!(result, expected);
         }
     }
@@ -536,7 +536,7 @@ mod tests {
         ];
         for (direction, expected) in parameters {
             let result =
-                boardstate.is_blocked_in_direction(&PawnLocation::build(22).unwrap(), &direction);
+                boardstate.is_blocked_in_direction(PawnLocation::build(22).unwrap(), direction);
             assert_eq!(result, expected);
         }
     }

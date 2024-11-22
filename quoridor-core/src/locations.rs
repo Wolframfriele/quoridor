@@ -13,7 +13,7 @@ pub trait Location {
 
 /// The location of a pawn on the board, represented by the number of the square that the pawn
 /// occupies.
-#[derive(Clone, Hash, Debug, PartialEq)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq)]
 pub struct PawnLocation {
     square: u8,
 }
@@ -45,7 +45,7 @@ impl PawnLocation {
         })
     }
 
-    pub fn from_direction(&self, direction: &Direction) -> Result<Self> {
+    pub fn from_direction(&self, direction: Direction) -> Result<Self> {
         if let Some(new_coordinate) = self.get_coordinate().from_direction(direction) {
             return PawnLocation::from_coordinate(new_coordinate);
         }
@@ -61,7 +61,7 @@ impl Location for PawnLocation {
 
 /// The location of a wall on the board, represented by the number of the square that touches the
 /// center off the wall with the top right corner of the square.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct WallLocation {
     square: u8,
     orientation: WallOrientation,
@@ -109,13 +109,13 @@ impl Location for WallLocation {
     }
 }
 
-#[derive(Clone, Hash, Debug, PartialEq)]
+#[derive(Copy, Clone, Hash, Debug, PartialEq)]
 pub enum WallOrientation {
     Horizontal,
     Vertical,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Copy, Debug, Clone)]
 pub struct Coordinate {
     pub x: u8,
     pub y: u8,
@@ -133,7 +133,7 @@ impl Coordinate {
         (self.y) * 9 + self.x
     }
 
-    pub fn from_direction(&self, direction: &Direction) -> Option<Coordinate> {
+    pub fn from_direction(&self, direction: Direction) -> Option<Coordinate> {
         match direction {
             Direction::North => {
                 if self.y < 8 {
@@ -183,7 +183,7 @@ impl Coordinate {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Direction {
     North,
     East,

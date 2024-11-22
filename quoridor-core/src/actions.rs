@@ -122,7 +122,7 @@ impl PossibleActions {
     ) -> PossibleActions {
         let pawn_actions = pawn_locations
             .iter()
-            .map(|location| Action::from_pawn_location(location.clone()))
+            .map(|location| Action::from_pawn_location(*location))
             .collect();
 
         PossibleActions {
