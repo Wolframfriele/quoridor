@@ -1,4 +1,6 @@
-use anyhow::{ensure, Result};
+use std::collections::{HashSet, VecDeque};
+
+use anyhow::{bail, ensure, Result};
 use bitmaps::Bitmap;
 
 use crate::actions::{Action, PossibleActions};
@@ -241,12 +243,6 @@ impl Boardstate {
         direction: &Direction,
         occupied_location: &PawnLocation,
     ) -> Vec<PawnLocation> {
-        // check if new location is blocked in direction
-        // if not blocked return the new location from going in the direction from the new location
-        // if blocked check the two other directions (for when going North is blocked, check East
-        // and West)
-        // add the directions that are possible
-
         let mut possible_jump_moves: Vec<PawnLocation> = Vec::with_capacity(3);
 
         if !self.is_blocked_in_direction(occupied_location, direction) {
@@ -365,6 +361,15 @@ impl Boardstate {
         }
 
         self.wall_placed.set(square, true);
+
+        if !self.players_can_reach_opposite_side() {
+            self.wall_placed.set(square, false);
+            bail!(format!(
+                "Can't insert wall at location {}, a player is blocked from reaching the other side",
+                square
+        ))
+        }
+
         self.decrease_available_walls();
         self.swap_active_player();
         Ok(GameStatus::InProgress)
@@ -384,6 +389,28 @@ impl Boardstate {
             }
         }
         false
+    }
+
+    fn players_can_reach_opposite_side(&self) -> bool {
+        self.path_is_available_for_player(Player::White)
+            && self.path_is_available_for_player(Player::Black)
+    }
+
+    fn path_is_available_for_player(&self, player: Player) -> bool {
+        let (start, goal) = match player {
+            Player::White => (self.get_position_white_pawn(), 8),
+            Player::Black => (self.get_position_black_pawn(), 0),
+        };
+
+        // capacity can problably be smaller
+        let to_explore: VecDeque<PawnLocation> = VecDeque::with_capacity(81);
+        let seen: HashSet<PawnLocation> = HashSet::new();
+
+        to_explore.push_back(start);
+
+
+
+        true
     }
 
     fn decrease_available_walls(&mut self) {
@@ -593,9 +620,10 @@ mod tests {
         let boardstate = Boardstate::start_from(
             PawnLocation::build(40).unwrap(),
             PawnLocation::build(49).unwrap(),
-            Vec::new(), 
+            Vec::new(),
             None,
-        ).unwrap();
+        )
+        .unwrap();
         let possible_moves = boardstate.get_possible_pawn_moves();
         assert!(possible_moves.contains(&PawnLocation::build(58).unwrap()));
     }
@@ -605,11 +633,10 @@ mod tests {
         let boardstate = Boardstate::start_from(
             PawnLocation::build(40).unwrap(),
             PawnLocation::build(49).unwrap(),
-            vec![
-                WallLocation::build(49, WallOrientation::Horizontal).unwrap(),
-            ], 
+            vec![WallLocation::build(49, WallOrientation::Horizontal).unwrap()],
             None,
-        ).unwrap();
+        )
+        .unwrap();
         let possible_moves = boardstate.get_possible_pawn_moves();
         assert!(possible_moves.contains(&PawnLocation::build(48).unwrap()));
         assert!(possible_moves.contains(&PawnLocation::build(50).unwrap()));
@@ -623,9 +650,10 @@ mod tests {
             vec![
                 WallLocation::build(49, WallOrientation::Horizontal).unwrap(),
                 WallLocation::build(48, WallOrientation::Vertical).unwrap(),
-            ], 
+            ],
             None,
-        ).unwrap();
+        )
+        .unwrap();
         let possible_moves = boardstate.get_possible_pawn_moves();
         assert!(!possible_moves.contains(&PawnLocation::build(48).unwrap()));
         assert!(possible_moves.contains(&PawnLocation::build(50).unwrap()));
