@@ -70,7 +70,7 @@ fn format_horizontal_wall(boardstate: &Boardstate, location: PawnLocation) -> St
         horizontal_line.push('-')
     }
     let square = location.get_square();
-    if square < 70 && boardstate.get_wall_positions()[usize::from(square)].is_some() {
+    if square < 71 && boardstate.get_wall_positions()[usize::from(square)].is_some() {
         horizontal_line.push_str("--#");
     } else {
         horizontal_line.push_str("--|");

@@ -109,9 +109,9 @@ impl Boardstate {
         wall_arrray
     }
 
-    pub fn wall_at_coordinate(&self, coordinate: Coordinate) -> Option<WallOrientation> {
+    pub fn get_wall_at_coordinate(&self, coordinate: Coordinate) -> Option<WallOrientation> {
         if (0..8u8).contains(&coordinate.x)
-            && (0..7u8).contains(&coordinate.y)
+            && (0..8u8).contains(&coordinate.y)
             && self.wall_placed.get(coordinate.to_square().into())
         {
             return match self.wall_orientation.get(coordinate.to_square().into()) {
@@ -145,7 +145,7 @@ impl Boardstate {
 
     pub fn vertical_wall_at_coordinate(&self, coordinate: Coordinate) -> bool {
         let mut wall_option_1 = false;
-        if (0..7u8).contains(&coordinate.x) && (0..8u8).contains(&coordinate.y) {
+        if (0..8u8).contains(&coordinate.x) && (0..8u8).contains(&coordinate.y) {
             wall_option_1 = self.wall_placed.get(coordinate.to_square().into())
                 && self.wall_orientation.get(coordinate.to_square().into());
         }
@@ -153,7 +153,7 @@ impl Boardstate {
         let mut wall_option_2 = false;
         let second_coordinate = coordinate.from_calculation(0, -1);
         if let Some(second_coordinate) = second_coordinate {
-            if (0..7u8).contains(&second_coordinate.x) && (0..8u8).contains(&second_coordinate.y) {
+            if (0..8u8).contains(&second_coordinate.x) && (0..8u8).contains(&second_coordinate.y) {
                 wall_option_2 = self.wall_placed.get(second_coordinate.to_square().into())
                     && self
                         .wall_orientation
@@ -173,7 +173,7 @@ impl Boardstate {
     /// be available (not blocked by existing wall) and check if it doesn't block all paths to the
     /// opposite side for either player.
     pub fn get_legal_actions(&self) -> PossibleActions {
-        PossibleActions::build(self.get_possible_pawn_moves(), Vec::new())
+        PossibleActions::build(self.get_possible_pawn_moves_for_active_player(), Vec::new())
     }
 
     /// The play action takes an action as input and attempts to play that move on the current
@@ -190,7 +190,7 @@ impl Boardstate {
 
     fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<GameStatus> {
         ensure!(
-            self.get_possible_pawn_moves().contains(&location),
+            self.get_possible_pawn_moves_for_active_player().contains(&location),
             format!("The move to square {} is not legal.", location.get_square())
         );
         match self.active_player {
@@ -213,16 +213,20 @@ impl Boardstate {
         Ok(GameStatus::InProgress)
     }
 
-    fn get_possible_pawn_moves(&self) -> Vec<PawnLocation> {
+    fn get_possible_pawn_moves_for_active_player(&self) -> Vec<PawnLocation> {
         let current_location = match self.active_player {
             Player::White => self.white_position,
             Player::Black => self.black_position,
         };
 
+        self.get_possible_pawn_moves_from_location(current_location) 
+    }
+
+    fn get_possible_pawn_moves_from_location(&self, location: PawnLocation) -> Vec<PawnLocation> {
         let mut possible_pawn_moves: Vec<PawnLocation> = Vec::with_capacity(4);
         for direction in DIRECTIONS {
-            if !self.is_blocked_in_direction(current_location, direction) {
-                let new_location = current_location.from_direction(direction).expect(
+            if !self.is_blocked_in_direction(location, direction) {
+                let new_location = location.from_direction(direction).expect(
                     "Going off the board should be handled by the is_blocked_in_direction method",
                 );
 
@@ -330,7 +334,7 @@ impl Boardstate {
         let coordinate = location.get_coordinate();
 
         ensure!(
-            self.wall_at_coordinate(coordinate).is_none(),
+            self.get_wall_at_coordinate(coordinate).is_none(),
             format!("Can't insert wall, location {} already occupied", square)
         );
 
@@ -402,15 +406,25 @@ impl Boardstate {
             Player::Black => (self.get_position_black_pawn(), 0),
         };
 
-        // capacity can problably be smaller
-        let mut to_explore: VecDeque<PawnLocation> = VecDeque::with_capacity(81);
+        let mut to_explore: VecDeque<PawnLocation> = VecDeque::with_capacity(40);
         let mut seen: HashSet<PawnLocation> = HashSet::new();
 
         to_explore.push_back(start);
 
+        let mut current;
+        let mut opposite_side_reached = false;
+        while !to_explore.is_empty() && !opposite_side_reached {
+            current = to_explore.pop_front().expect("While loop should quit when to_explore is empty");
+            for next in self.get_possible_pawn_moves_from_location(current) {
+                if !seen.contains(&next) {
+                    to_explore.push_back(next);
+                    seen.insert(next);
+                    opposite_side_reached = current.get_coordinate().y == goal
+                }
+            }
+        }
 
-
-        true
+        opposite_side_reached 
     }
 
     fn decrease_available_walls(&mut self) {
@@ -469,6 +483,28 @@ mod tests {
             vec![
                 WallLocation::build(40, WallOrientation::Horizontal).unwrap(),
                 WallLocation::build(41, WallOrientation::Horizontal).unwrap(),
+            ],
+            None,
+        )
+        .unwrap();
+    }
+
+    // TODO Figure out why test fails it does not make sense that I need to make all my contains ranges go
+    // up to 8 because I want to ignore the most right and top squares since the wall grid is
+    // smaller. Something weird is going on..
+    #[test]
+    #[should_panic]
+    fn start_from_path_completly_blocked_off() {
+        let _boardstate = Boardstate::start_from(
+            PawnLocation::build(4).unwrap(),
+            PawnLocation::build(76).unwrap(),
+            vec![
+                WallLocation::build(36, WallOrientation::Horizontal).unwrap(),
+                WallLocation::build(38, WallOrientation::Horizontal).unwrap(),
+                WallLocation::build(40, WallOrientation::Horizontal).unwrap(),
+                WallLocation::build(42, WallOrientation::Horizontal).unwrap(),
+                WallLocation::build(43, WallOrientation::Vertical).unwrap(),
+                WallLocation::build(52, WallOrientation::Horizontal).unwrap(),
             ],
             None,
         )
@@ -544,7 +580,7 @@ mod tests {
     #[test]
     fn get_possible_pawn_moves_starting_position() {
         let boardstate = Boardstate::new();
-        let result = boardstate.get_possible_pawn_moves();
+        let result = boardstate.get_possible_pawn_moves_for_active_player();
         let expected = vec![
             PawnLocation::build(13).unwrap(),
             PawnLocation::build(5).unwrap(),
@@ -624,7 +660,7 @@ mod tests {
             None,
         )
         .unwrap();
-        let possible_moves = boardstate.get_possible_pawn_moves();
+        let possible_moves = boardstate.get_possible_pawn_moves_for_active_player();
         assert!(possible_moves.contains(&PawnLocation::build(58).unwrap()));
     }
 
@@ -637,7 +673,7 @@ mod tests {
             None,
         )
         .unwrap();
-        let possible_moves = boardstate.get_possible_pawn_moves();
+        let possible_moves = boardstate.get_possible_pawn_moves_for_active_player();
         assert!(possible_moves.contains(&PawnLocation::build(48).unwrap()));
         assert!(possible_moves.contains(&PawnLocation::build(50).unwrap()));
     }
@@ -654,9 +690,15 @@ mod tests {
             None,
         )
         .unwrap();
-        let possible_moves = boardstate.get_possible_pawn_moves();
+        let possible_moves = boardstate.get_possible_pawn_moves_for_active_player();
         assert!(!possible_moves.contains(&PawnLocation::build(48).unwrap()));
         assert!(possible_moves.contains(&PawnLocation::build(50).unwrap()));
+    }
+
+    #[test]
+    fn opposite_side_reachable_on_empty_board() {
+        let boardstate = Boardstate::new();
+        assert!(boardstate.players_can_reach_opposite_side());
     }
 
     #[test]
@@ -695,4 +737,4 @@ mod tests {
             .insert_wall_at_location(WallLocation::build(42, WallOrientation::Horizontal).unwrap())
             .unwrap();
     }
-}
+}   

@@ -13,7 +13,7 @@ pub trait Location {
 
 /// The location of a pawn on the board, represented by the number of the square that the pawn
 /// occupies.
-#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
 pub struct PawnLocation {
     square: u8,
 }
