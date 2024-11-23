@@ -106,6 +106,7 @@ impl Boardstate {
                 }
             }
         }
+
         wall_arrray
     }
 
@@ -119,12 +120,13 @@ impl Boardstate {
                 true => Some(WallOrientation::Vertical),
             };
         }
+
         None
     }
 
     pub fn horizontal_wall_at_coordinate(&self, coordinate: Coordinate) -> bool {
         let mut wall_option_1 = false;
-        if (0..8u8).contains(&coordinate.x) && (0..7u8).contains(&coordinate.y) {
+        if (0..=7u8).contains(&coordinate.x) && (0..=7u8).contains(&coordinate.y) {
             wall_option_1 = self.wall_placed.get(coordinate.to_square().into())
                 && !self.wall_orientation.get(coordinate.to_square().into());
         }
@@ -132,7 +134,7 @@ impl Boardstate {
         let mut wall_option_2 = false;
         let second_coordinate = coordinate.from_calculation(-1, 0);
         if let Some(second_coordinate) = second_coordinate {
-            if (0..8u8).contains(&second_coordinate.x) && (0..7u8).contains(&second_coordinate.y) {
+            if (0..=8u8).contains(&second_coordinate.x) && (0..=7u8).contains(&second_coordinate.y) {
                 wall_option_2 = self.wall_placed.get(second_coordinate.to_square().into())
                     && !self
                         .wall_orientation
@@ -145,7 +147,7 @@ impl Boardstate {
 
     pub fn vertical_wall_at_coordinate(&self, coordinate: Coordinate) -> bool {
         let mut wall_option_1 = false;
-        if (0..8u8).contains(&coordinate.x) && (0..8u8).contains(&coordinate.y) {
+        if (0..=7u8).contains(&coordinate.x) && (0..=7u8).contains(&coordinate.y) {
             wall_option_1 = self.wall_placed.get(coordinate.to_square().into())
                 && self.wall_orientation.get(coordinate.to_square().into());
         }
@@ -153,7 +155,7 @@ impl Boardstate {
         let mut wall_option_2 = false;
         let second_coordinate = coordinate.from_calculation(0, -1);
         if let Some(second_coordinate) = second_coordinate {
-            if (0..8u8).contains(&second_coordinate.x) && (0..8u8).contains(&second_coordinate.y) {
+            if (0..=7u8).contains(&second_coordinate.x) && (0..=8u8).contains(&second_coordinate.y) {
                 wall_option_2 = self.wall_placed.get(second_coordinate.to_square().into())
                     && self
                         .wall_orientation
