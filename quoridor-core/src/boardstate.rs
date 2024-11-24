@@ -717,6 +717,34 @@ mod tests {
     }
 
     #[test]
+    fn insert_wall_and_check_vertical() {
+        let mut boardstate = Boardstate::new();
+        boardstate
+            .insert_wall_at_location(WallLocation::build(70, WallOrientation::Vertical).unwrap())
+            .unwrap();
+        assert_eq!(
+            boardstate.get_wall_positions()[70],
+            Some(WallOrientation::Vertical)
+        );
+       assert!(boardstate.vertical_wall_at_coordinate(Coordinate::from_square(70)));
+       assert!(boardstate.vertical_wall_at_coordinate(Coordinate::from_square(79)));
+    }
+
+    #[test]
+    fn insert_wall_and_check_horizontal() {
+        let mut boardstate = Boardstate::new();
+        boardstate
+            .insert_wall_at_location(WallLocation::build(70, WallOrientation::Horizontal).unwrap())
+            .unwrap();
+        assert_eq!(
+            boardstate.get_wall_positions()[70],
+            Some(WallOrientation::Horizontal)
+        );
+       assert!(boardstate.horizontal_wall_at_coordinate(Coordinate::from_square(70)));
+       assert!(boardstate.horizontal_wall_at_coordinate(Coordinate::from_square(71)));
+    }
+
+    #[test]
     #[should_panic]
     fn insert_wall_failed_same_location() {
         let mut boardstate = Boardstate::new();
