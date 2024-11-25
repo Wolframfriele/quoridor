@@ -1,13 +1,38 @@
+use std::time::Instant;
+
 use anyhow::{bail, Result};
 
-use crate::locations::{Coordinate, Location, PawnLocation, WallLocation, WallOrientation};
+use crate::{
+    boardstate::Player,
+    locations::{Coordinate, Location, PawnLocation, WallLocation, WallOrientation},
+};
 
 const ALPHABET: [char; 9] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
-#[derive(Clone, Debug, PartialEq)]
+pub struct ExecutedAction {
+    time: Instant,
+    action: Action,
+}
+
+impl ExecutedAction {
+    pub fn new(time: Instant, action: Action) -> Self {
+        ExecutedAction { time, action }
+    }
+
+    pub fn get_time(&self) -> Instant {
+        self.time
+    }
+
+    pub fn get_action(&self) -> Action {
+        self.action
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub enum Action {
     Pawn(PawnLocation),
     Wall(WallLocation),
+    Resigned(Player),
 }
 
 impl Action {
@@ -37,6 +62,10 @@ impl Action {
                 wall_location.get_coordinate(),
                 Some(wall_location.get_orientation()),
             ),
+            Self::Resigned(player) => match player {
+                Player::White => String::from("1-0"),
+                Player::Black => String::from("0-1"),
+            },
         }
     }
 }

@@ -134,7 +134,8 @@ impl Boardstate {
         let mut wall_option_2 = false;
         let second_coordinate = coordinate.from_calculation(-1, 0);
         if let Some(second_coordinate) = second_coordinate {
-            if (0..=8u8).contains(&second_coordinate.x) && (0..=7u8).contains(&second_coordinate.y) {
+            if (0..=8u8).contains(&second_coordinate.x) && (0..=7u8).contains(&second_coordinate.y)
+            {
                 wall_option_2 = self.wall_placed.get(second_coordinate.to_square().into())
                     && !self
                         .wall_orientation
@@ -155,7 +156,8 @@ impl Boardstate {
         let mut wall_option_2 = false;
         let second_coordinate = coordinate.from_calculation(0, -1);
         if let Some(second_coordinate) = second_coordinate {
-            if (0..=7u8).contains(&second_coordinate.x) && (0..=8u8).contains(&second_coordinate.y) {
+            if (0..=7u8).contains(&second_coordinate.x) && (0..=8u8).contains(&second_coordinate.y)
+            {
                 wall_option_2 = self.wall_placed.get(second_coordinate.to_square().into())
                     && self
                         .wall_orientation
@@ -187,12 +189,17 @@ impl Boardstate {
         match action {
             Action::Pawn(pawn_location) => self.move_pawn_to_location(pawn_location),
             Action::Wall(wall_location) => self.insert_wall_at_location(wall_location),
+            Action::Resigned(player) => Ok(GameStatus::Finished {
+                won_by: player,
+                reason: VictoryReason::Resigned,
+            }),
         }
     }
 
     fn move_pawn_to_location(&mut self, location: PawnLocation) -> Result<GameStatus> {
         ensure!(
-            self.get_possible_pawn_moves_for_active_player().contains(&location),
+            self.get_possible_pawn_moves_for_active_player()
+                .contains(&location),
             format!("The move to square {} is not legal.", location.get_square())
         );
         match self.active_player {
@@ -221,7 +228,7 @@ impl Boardstate {
             Player::Black => self.black_position,
         };
 
-        self.get_possible_pawn_moves_from_location(current_location) 
+        self.get_possible_pawn_moves_from_location(current_location)
     }
 
     fn get_possible_pawn_moves_from_location(&self, location: PawnLocation) -> Vec<PawnLocation> {
@@ -416,7 +423,9 @@ impl Boardstate {
         let mut current;
         let mut opposite_side_reached = false;
         while !to_explore.is_empty() && !opposite_side_reached {
-            current = to_explore.pop_front().expect("While loop should quit when to_explore is empty");
+            current = to_explore
+                .pop_front()
+                .expect("While loop should quit when to_explore is empty");
             for next in self.get_possible_pawn_moves_from_location(current) {
                 if !seen.contains(&next) {
                     to_explore.push_back(next);
@@ -426,7 +435,7 @@ impl Boardstate {
             }
         }
 
-        opposite_side_reached 
+        opposite_side_reached
     }
 
     fn decrease_available_walls(&mut self) {
@@ -726,8 +735,8 @@ mod tests {
             boardstate.get_wall_positions()[70],
             Some(WallOrientation::Vertical)
         );
-       assert!(boardstate.vertical_wall_at_coordinate(Coordinate::from_square(70)));
-       assert!(boardstate.vertical_wall_at_coordinate(Coordinate::from_square(79)));
+        assert!(boardstate.vertical_wall_at_coordinate(Coordinate::from_square(70)));
+        assert!(boardstate.vertical_wall_at_coordinate(Coordinate::from_square(79)));
     }
 
     #[test]
@@ -740,8 +749,8 @@ mod tests {
             boardstate.get_wall_positions()[70],
             Some(WallOrientation::Horizontal)
         );
-       assert!(boardstate.horizontal_wall_at_coordinate(Coordinate::from_square(70)));
-       assert!(boardstate.horizontal_wall_at_coordinate(Coordinate::from_square(71)));
+        assert!(boardstate.horizontal_wall_at_coordinate(Coordinate::from_square(70)));
+        assert!(boardstate.horizontal_wall_at_coordinate(Coordinate::from_square(71)));
     }
 
     #[test]
@@ -767,4 +776,4 @@ mod tests {
             .insert_wall_at_location(WallLocation::build(42, WallOrientation::Horizontal).unwrap())
             .unwrap();
     }
-}   
+}
