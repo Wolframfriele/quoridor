@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <head></head>
+  <body>
+    <button onclick="socket.send('coolbeans')">Send</button>
+    <script>
+      // fetch("http://localhost:3000/auth")
+      //   .then((response) => console.log(response))
+
+      const socket = new WebSocket("ws://localhost:3000/ws");
+
+      socket.onopen = (e) => {
+        console.log("Connected");
+      };
+
+      socket.onclose = (e) => {
+        console.log("Disconnected");
+      };
+
+      socket.onmessage = (e) => {
+        console.log(`Received: ${e.data}`);
+      };
+
+      socket.onerror = (e) => {
+        console.log(`Error: ${e.data}`);
+      };
+    </script>
+  </body>
+</html>
+

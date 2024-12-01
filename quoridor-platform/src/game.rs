@@ -21,4 +21,10 @@ impl Game {
         }
     }
 
+    pub fn get_id(&self) -> Uuid {
+        self.id
+    }
+
+
+
 }
