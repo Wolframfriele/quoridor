@@ -2,17 +2,17 @@ use uuid::Uuid;
 
 use quoridor_core::gamestate::{Gamestate, TimeControl};
 
-use crate::player::AnonUser;
+use crate::player::PlayerInfo;
 
-pub struct Game {
+pub struct Game<T: PlayerInfo> {
     id: Uuid,
-    white_player: AnonUser,
-    black_player: AnonUser,
+    white_player: T,
+    black_player: T,
     gamestate: Gamestate,
 }
 
-impl Game {
-    pub fn new(player_1: AnonUser, player_2: AnonUser, time_control: TimeControl) -> Self {
+impl<T> Game<T: PlayerInfo> {
+    pub fn new(player_1: T, player_2: T, time_control: TimeControl) -> Self {
         Game {
             id: Uuid::new_v4(),
             white_player: player_1,
