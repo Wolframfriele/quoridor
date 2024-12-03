@@ -8,6 +8,7 @@ quoridor-core = { path = "../quoridor-core" }
 
 axum = { version = "0.7.9", features = ["ws"] }
 tower-http = { version = "0.6.2", features = ["fs"]}
+tower-sessions = "0.13.0"
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 futures = "0.3"
